@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/client';
+import { getPrisma } from '@/lib/prisma/client';
 import { getAvailabilityForDate } from '@/lib/booking/availability';
 import { validateAvailabilityQuery, AvailabilityQuery } from '@/lib/booking/validation';
-import { getNowInLusaka, createLusakaDate, startOfLusakaDay, addDays } from '@/lib/booking/timezone';
+import { getNowInLusaka, lusakaDateTimeToUtc, todayLusakaYmd, addDaysYmd, addDays, dayOfWeekYmd } from '@/lib/booking/timezone';
 import { bookingConfig } from '@/lib/data/booking-config';
 
 function parseQueryParams(searchParams: URLSearchParams): AvailabilityQuery {
@@ -20,65 +20,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = parseQueryParams(searchParams);
 
-    const [year, month, day] = query.date.split('-').map(Number);
-    const selectedDate = createLusakaDate(year, month, day);
     const now = getNowInLusaka();
+    const todayYmd = todayLusakaYmd(now);
+    const maxYmd = addDaysYmd(todayYmd, bookingConfig.maxBookingWindowDays);
 
-    const startDate = startOfLusakaDay(now);
-    const maxDate = addDays(startDate, bookingConfig.maxBookingWindowDays);
-
-    if (selectedDate < startDate || selectedDate > maxDate) {
+    // YYYY-MM-DD strings compare correctly as text.
+    if (query.date < todayYmd || query.date > maxYmd) {
       return NextResponse.json(
         { error: `Booking window is today through ${bookingConfig.maxBookingWindowDays} days ahead.` },
         { status: 400 }
       );
     }
 
-    const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: bookingConfig.timezone });
-    if (dayOfWeek === 'Sunday') {
+    if (dayOfWeekYmd(query.date) === 'Sunday') {
       return NextResponse.json(
-        {
-          date: query.date,
-          dayOfWeek: 'Sunday',
-          status: 'closed',
-          slots: [],
-        },
+        { date: query.date, dayOfWeek: 'Sunday', status: 'closed', slots: [] },
         { status: 200 }
       );
     }
 
-    const startOfDay = startOfLusakaDay(selectedDate);
+    // Lusaka day bounds as absolute instants.
+    const startOfDay = lusakaDateTimeToUtc(query.date);
     const endOfDay = addDays(startOfDay, 1);
 
-    // Fetch existing bookings from database, or use empty array if no database
-    let existingBookings: Array<{ startAt: Date; endAt: Date; barberId: string }> = [];
-    try {
-      existingBookings = await prisma.booking.findMany({
-        where: {
-          status: 'confirmed',
-          startAt: { gte: startOfDay },
-          endAt: { lt: endOfDay },
-        },
-        select: {
-          startAt: true,
-          endAt: true,
-          barberId: true,
-        },
-      });
-    } catch (prismaError) {
-      // If database is not available (e.g., no DATABASE_URL), use empty bookings array for testing
-      if (prismaError instanceof Error && prismaError.message.includes('DATABASE_URL is configured')) {
-        existingBookings = [];
-      } else {
-        throw prismaError;
-      }
-    }
+    const existingBookings = await getPrisma().booking.findMany({
+      where: {
+        status: 'confirmed',
+        startAt: { lt: endOfDay },
+        endAt: { gt: startOfDay },
+      },
+      select: { startAt: true, endAt: true, barberId: true },
+    });
 
     const availability = getAvailabilityForDate(
       query.serviceId,
       query.barberPreference,
       query.barberId,
-      selectedDate,
+      startOfDay,
       existingBookings,
       now
     );
@@ -91,7 +69,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (error instanceof Error && error.message === 'Service not found') {
+    if (error instanceof Error && error.message.startsWith('Service not found')) {
       return NextResponse.json({ error: 'Unknown service' }, { status: 404 });
     }
     console.error('Availability API error:', error);

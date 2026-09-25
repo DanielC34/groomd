@@ -20,11 +20,11 @@ export function ContactHeader() {
             </div>
 
             <h1 className="font-display font-extrabold uppercase tracking-tight text-3xl sm:text-4xl md:text-5xl text-[var(--color-brand-light)] mb-4 leading-tight">
-              COME THROUGH.
+              Visit Groomd
             </h1>
 
             <p className="font-body text-[var(--color-text-on-strong-secondary)] text-base sm:text-lg leading-relaxed mb-8">
-              Find us in Kabulonga, Lusaka. If you need a time, the quickest way is to book online.
+              Find us in Kabulonga, give us a call, or book your chair online.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -54,10 +54,10 @@ export function ContactHeader() {
 
           {/* Right Hero Studio Image Card */}
           <div className="lg:col-span-6">
-            <div className="aspect-[4/3] lg:aspect-[16/11] rounded-[var(--radius-lg)] overflow-hidden bg-[#2D030A] border border-[var(--color-brand-secondary)] relative shadow-xl">
-              <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#5A0A17] via-[#44040F] to-[#2D030A]">
-                <div className="w-20 h-20 rounded-full bg-[var(--color-brand-secondary)]/50 flex items-center justify-center mb-4 border border-[var(--color-brand-accent)]/30">
-                  <svg
+            {/* Image pending (CONTENT §17). Flat Mid Wine placeholder: no gradient, no caption. */}
+            <div className="aspect-[4/3] lg:aspect-[16/11] rounded-[var(--radius-lg)] overflow-hidden bg-[var(--color-brand-secondary)] relative">
+              <div className="w-full h-full flex items-center justify-center" aria-hidden="true">
+                <svg
                     className="w-10 h-10 text-[var(--color-brand-accent)]"
                     fill="none"
                     stroke="currentColor"
@@ -77,13 +77,6 @@ export function ContactHeader() {
                       d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                     />
                   </svg>
-                </div>
-                <span className="font-display font-bold text-base text-[var(--color-brand-light)] tracking-wide uppercase text-center">
-                  SHOP 3, MOPANI COURT · KABULONGA
-                </span>
-                <span className="font-body text-xs text-[var(--color-brand-accent)] mt-1 text-center">
-                  Groomd Men&apos;s Grooming Studio
-                </span>
               </div>
               <p className="visually-hidden">
                 The Groomd studio interior with leather barber chairs, mirrors and warm lighting.

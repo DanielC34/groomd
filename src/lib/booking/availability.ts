@@ -5,14 +5,16 @@ import {
 } from '@/lib/data/opening-hours';
 import { bookingConfig } from '@/lib/data/booking-config';
 import { getServiceById } from '@/lib/data/services';
+import { getAllBarbers } from '@/lib/data/barbers';
 import {
   getNowInLusaka,
-  createLusakaDate,
+  getLusakaParts,
+  lusakaDateTimeToUtc,
   formatLusakaTime,
-  getDayOfWeek,
   isSameLusakaDay,
   startOfLusakaDay,
   addMinutes,
+  addDays,
 } from './timezone';
 
 export type BarberPreference = 'specific' | 'no-preference';
@@ -73,7 +75,7 @@ function isSlotInPast(
   referenceTime: Date,
   minNoticeMinutes: number
 ): boolean {
-  const nowMinutes = referenceTime.getHours() * 60 + referenceTime.getMinutes();
+  const nowMinutes = getLusakaParts(referenceTime).minutesOfDay;
   const slotMinutes = timeToMinutes(slotStart);
   return slotMinutes < nowMinutes + minNoticeMinutes;
 }
@@ -114,8 +116,8 @@ export function getAvailabilityForDate(
     throw new Error(`Service not found: ${serviceId}`);
   }
 
-  const dayOfWeek = getDayOfWeek(date) as DayOfWeek;
-  const dateStr = date.toISOString().split('T')[0];
+  const { ymd: dateStr, dayOfWeek: lusakaDay } = getLusakaParts(date);
+  const dayOfWeek = lusakaDay as DayOfWeek;
 
   if (isDayClosed(dayOfWeek)) {
     return {
@@ -154,14 +156,7 @@ export function getAvailabilityForDate(
         continue;
       }
 
-      const { hours, minutes } = parseTime(slotStart);
-      const slotStartDate = createLusakaDate(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        date.getDate(),
-        hours,
-        minutes
-      );
+      const slotStartDate = lusakaDateTimeToUtc(dateStr, slotStart);
       const slotEndDate = addMinutes(slotStartDate, service.durationMinutes);
 
       const hasConflict = bookedIntervals.some((interval) =>
@@ -177,21 +172,14 @@ export function getAvailabilityForDate(
       }
     }
   } else if (barberPreference === 'no-preference') {
-    const allBarbers = ['mwila-banda', 'chanda-mulenga', 'kondwani-phiri'];
+    const allBarbers = getAllBarbers().map((b) => b.id);
 
     for (const slotStart of candidateSlots) {
       if (isToday && isSlotInPast(slotStart, referenceTime, bookingConfig.minNoticeMinutes)) {
         continue;
       }
 
-      const { hours, minutes } = parseTime(slotStart);
-      const slotStartDate = createLusakaDate(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        date.getDate(),
-        hours,
-        minutes
-      );
+      const slotStartDate = lusakaDateTimeToUtc(dateStr, slotStart);
       const slotEndDate = addMinutes(slotStartDate, service.durationMinutes);
 
       const availableBarber = allBarbers.find((bid) => {
@@ -249,10 +237,4 @@ export function getAvailabilityForRange(
   }
 
   return results;
-}
-
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
 }

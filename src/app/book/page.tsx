@@ -2,22 +2,21 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import {
   BookingHeader,
   BookingStepper,
   ServiceSelection,
   BookingSummary,
-  QuickCutNotice,
   BarberTimeSelection,
   CustomerDetailsForm,
   ReviewConfirm,
   BookingConfirmed,
+  MobileSummaryContext,
 } from "@/components/booking";
 import type { CustomerDetails } from "@/components/booking";
 import { services } from "@/lib/data/services";
 import { getBarberById } from "@/lib/data/barbers";
+import { formatYmdDate, formatYmdShort, formatTimeRange } from "@/lib/booking/timezone";
 
 /* ── Types ── */
 interface Step2State {
@@ -25,32 +24,22 @@ interface Step2State {
   barberPreference: "specific" | "no-preference";
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
+  serviceId: string; // service the time was validated for
 }
+
+/** Why Step 2 must ask for a new time (drives the approved CONTENT §9.8 notice). */
+type Step2Notice = { kind: "conflict" | "invalid"; time: string } | null;
 
 interface ConfirmedState {
   reference: string;
   assignedBarberId: string | null;
-  endTime: string;
+  startTime: string; // HH:MM Lusaka, from server
+  endTime: string; // HH:MM Lusaka, from server
+  startAt: string; // absolute ISO instant
+  endAt: string; // absolute ISO instant
 }
 
 /* ── Helpers ── */
-function formatDateLabel(dateStr: string): string {
-  const [y, mo, d] = dateStr.split("-").map(Number);
-  const date = new Date(Date.UTC(y, mo - 1, d));
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function calcFinishTime(start: string, durationMinutes: number): string {
-  const [h, m] = start.split(":").map(Number);
-  const total = h * 60 + m + durationMinutes;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
 
 /* ── Main booking flow content (needs useSearchParams → must be client) ── */
 function BookingFlowContent() {
@@ -77,6 +66,11 @@ function BookingFlowContent() {
   const [step2Data, setStep2Data] = useState<Step2State | null>(null);
   const [step3Data, setStep3Data] = useState<CustomerDetails | null>(null);
   const [confirmedData, setConfirmedData] = useState<ConfirmedState | null>(null);
+  const [step2Notice, setStep2Notice] = useState<Step2Notice>(null);
+
+  // Step 2 data is only trusted for the service it was validated against.
+  // After a service change the barber/date are kept, but the time must be re-checked in Step 2.
+  const step2Valid = step2Data !== null && step2Data.serviceId === selectedServiceId;
 
   /* ── Derived display values for BookingSummary ── */
   const barberDisplayName = step2Data
@@ -85,12 +79,18 @@ function BookingFlowContent() {
       : getBarberById(step2Data.barberId ?? "")?.name ?? "Barber"
     : undefined;
 
-  const dateDisplayText = step2Data ? formatDateLabel(step2Data.date) : undefined;
+  const dateDisplayText = step2Data ? formatYmdDate(step2Data.date) : undefined;
 
   const timeDisplayText =
-    step2Data && selectedService
-      ? `${step2Data.time} – ${calcFinishTime(step2Data.time, selectedService.durationMinutes)} (${selectedService.durationMinutes} min)`
+    step2Data && step2Valid && selectedService
+      ? `${formatTimeRange(step2Data.time, selectedService.durationMinutes)} (${selectedService.durationMinutes} min)`
       : undefined;
+
+  // Collapsed mobile summary line, CONTENT: "{Service} · {Short date} · {HH:MM}" (e.g. "Skin Fade · Sat 10 Oct · 14:30").
+  const shortDate = step2Data ? formatYmdShort(step2Data.date) : null;
+  const summaryLine =
+    [selectedService?.name, shortDate, step2Valid ? step2Data?.time : null].filter(Boolean).join(" · ") ||
+    "Not selected yet";
 
   /* ── Step handlers ── */
   const handleStep1Continue = () => {
@@ -98,8 +98,9 @@ function BookingFlowContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleStep2Continue = (data: Step2State) => {
-    setStep2Data(data);
+  const handleStep2Continue = (data: Omit<Step2State, "serviceId">) => {
+    setStep2Data({ ...data, serviceId: selectedServiceId });
+    setStep2Notice(null);
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -110,10 +111,27 @@ function BookingFlowContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /** Send the user back to Step 2 with all details kept; Step 2 refetches availability. */
+  const returnToStep2 = (notice: Step2Notice) => {
+    setStep2Notice(notice);
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const SERVER_ERROR_MESSAGE =
+    "We couldn't reach the booking service. Your details are still here. Please try again.";
+
   const handleStep4Confirm = async () => {
     if (!step2Data || !step3Data) throw new Error("Missing booking data");
+    if (!step2Valid) {
+      // Service changed after the time was chosen: never submit an unchecked time.
+      returnToStep2({ kind: "invalid", time: step2Data.time });
+      return;
+    }
 
-    const res = await fetch("/api/bookings", {
+    let res: Response;
+    try {
+      res = await fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -128,24 +146,35 @@ function BookingFlowContent() {
         notes: step3Data.notes,
         termsAccepted: true,
       }),
-    });
+      });
+    } catch {
+      // Network failure: stay on Review, keep everything, offer retry.
+      throw new Error(SERVER_ERROR_MESSAGE);
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       if (res.status === 409) {
-        throw new Error(
-          data.error ??
-            "The selected time is no longer available. Please choose another time."
-        );
+        // Slot taken since availability was checked.
+        returnToStep2({ kind: "conflict", time: step2Data.time });
+        return;
       }
-      throw new Error(data.error ?? "Something went wrong. Please try again.");
+      if (res.status === 400 && data.error === "Booking time validation failed") {
+        // e.g. the time has passed or is now inside the 1-hour notice window.
+        returnToStep2({ kind: "invalid", time: step2Data.time });
+        return;
+      }
+      throw new Error(SERVER_ERROR_MESSAGE);
     }
 
     const data = await res.json();
     setConfirmedData({
       reference: data.reference,
       assignedBarberId: data.barber?.id ?? null,
+      startTime: data.startTime,
       endTime: data.endTime,
+      startAt: data.startAt,
+      endAt: data.endAt,
     });
     setCurrentStep(5);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -174,13 +203,38 @@ function BookingFlowContent() {
           serviceId={selectedServiceId}
           assignedBarberId={confirmedData.assignedBarberId}
           date={step2Data.date}
-          startTime={step2Data.time}
+          startTime={confirmedData.startTime}
           endTime={confirmedData.endTime}
+          startAt={confirmedData.startAt}
+          endAt={confirmedData.endAt}
           customerName={step3Data.fullName}
+          barberPreference={step2Data.barberPreference}
+          onBookAnother={() => {
+            setConfirmedData(null);
+            setStep2Data(null);
+            setStep3Data(null);
+            setStep2Notice(null);
+            setOverrideServiceId(undefined);
+            setCurrentStep(1);
+            window.scrollTo({ top: 0 });
+          }}
         />
       </div>
     );
   }
+
+  const summaryDetails = (
+    <BookingSummary
+      embedded
+      currentStep={currentStep === 5 ? 4 : currentStep}
+      selectedServiceId={selectedServiceId}
+      barberName={barberDisplayName}
+      selectedDateText={dateDisplayText}
+      selectedTimeText={timeDisplayText}
+      onEditService={() => handleEditStep(1)}
+      onEditBarberTime={() => handleEditStep(2)}
+    />
+  );
 
   /* ── Steps 1–4: two-column layout ── */
   return (
@@ -193,6 +247,7 @@ function BookingFlowContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ── Main content ── */}
         <div className="lg:col-span-8">
+          <MobileSummaryContext.Provider value={{ line: summaryLine, details: summaryDetails }}>
           {currentStep === 1 && (
             <ServiceSelection
               selectedServiceId={selectedServiceId}
@@ -205,6 +260,8 @@ function BookingFlowContent() {
             <BarberTimeSelection
               serviceId={selectedServiceId}
               initialBarberId={validParamBarberId}
+              initialSelection={step2Data}
+              notice={step2Notice}
               onContinue={handleStep2Continue}
               onBack={() => handleEditStep(1)}
             />
@@ -234,20 +291,22 @@ function BookingFlowContent() {
               onEditStep={handleEditStep}
             />
           )}
+          </MobileSummaryContext.Provider>
         </div>
 
         {/* ── Sidebar ── */}
         <div className="lg:col-span-4 space-y-4">
-          <BookingSummary
-            currentStep={currentStep === 5 ? 4 : currentStep}
-            selectedServiceId={selectedServiceId}
-            barberName={barberDisplayName}
-            selectedDateText={dateDisplayText}
-            selectedTimeText={timeDisplayText}
-            onEditService={() => handleEditStep(1)}
-            onEditBarberTime={() => handleEditStep(2)}
-          />
-          {currentStep === 1 && <QuickCutNotice />}
+          <div className="hidden lg:block">
+            <BookingSummary
+              currentStep={currentStep === 5 ? 4 : currentStep}
+              selectedServiceId={selectedServiceId}
+              barberName={barberDisplayName}
+              selectedDateText={dateDisplayText}
+              selectedTimeText={timeDisplayText}
+              onEditService={() => handleEditStep(1)}
+              onEditBarberTime={() => handleEditStep(2)}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -257,9 +316,7 @@ function BookingFlowContent() {
 /* ── Page shell ── */
 export default function BookPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-background)]">
-      <Header />
-      <main id="main-content" className="flex-1">
+    <>
         <BookingHeader />
         <Suspense
           fallback={
@@ -270,8 +327,6 @@ export default function BookPage() {
         >
           <BookingFlowContent />
         </Suspense>
-      </main>
-      <Footer />
-    </div>
+    </>
   );
 }

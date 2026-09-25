@@ -3,7 +3,7 @@ import { getAllServices } from '@/lib/data/services';
 import { getAllBarbers } from '@/lib/data/barbers';
 import { bookingConfig } from '@/lib/data/booking-config';
 import { getOpeningHours } from '@/lib/data/opening-hours';
-import { createLusakaDate, getNowInLusaka, isSameLusakaDay, startOfLusakaDay, addDays } from './timezone';
+import { createLusakaDate, getNowInLusaka, getLusakaParts, isSameLusakaDay, startOfLusakaDay, addDays, dayOfWeekYmd } from './timezone';
 import type { DayOfWeek } from '@/lib/types';
 
 const barberIds = getAllBarbers().map((b) => b.id);
@@ -86,7 +86,7 @@ export function validateBookingTimeRules(
   const now = getNowInLusaka();
 
   if (isSameLusakaDay(selectedDate, now)) {
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const nowMinutes = getLusakaParts(now).minutesOfDay;
     const [hours, minutes] = timeStr.split(':').map(Number);
     const slotMinutes = hours * 60 + minutes;
     if (slotMinutes < nowMinutes + bookingConfig.minNoticeMinutes) {
@@ -100,7 +100,7 @@ export function validateBookingTimeRules(
     errors.push(`Booking window is today through ${bookingConfig.maxBookingWindowDays} days ahead.`);
   }
 
-  const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: bookingConfig.timezone });
+  const dayOfWeek = dayOfWeekYmd(dateStr);
   if (dayOfWeek === 'Sunday') {
     errors.push('The studio is closed on Sundays.');
   }

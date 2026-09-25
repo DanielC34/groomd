@@ -14,15 +14,16 @@ export function BarbersPreview() {
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 rounded-full bg-[var(--color-brand-primary)] inline-block" aria-hidden="true" />
             <p className="eyebrow text-[var(--color-brand-primary)] tracking-[0.16em]">
-              THE TEAM
+              THE BARBERS
             </p>
           </div>
           <h2
             id="barbers-heading"
             className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)]"
           >
-            MEET THE BARBERS
+            Meet the team
           </h2>
+          <p className="font-body text-base text-[var(--color-text-secondary)] mt-2">Three barbers, each offering the full menu.</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -33,15 +34,9 @@ export function BarbersPreview() {
             >
               {/* Photo placeholder matching 4:5 ratio */}
               <div className="aspect-[4/5] bg-[var(--color-surface-muted)] relative overflow-hidden flex flex-col items-center justify-center p-6 border-b border-[var(--color-border)]">
-                <div className="w-20 h-20 rounded-full bg-[#EBDDC3] flex items-center justify-center text-[var(--color-brand-primary)] mb-3">
+                <div className="w-20 h-20 rounded-full bg-[var(--color-background)] flex items-center justify-center text-[var(--color-brand-primary)] mb-3">
                   <User className="w-10 h-10" aria-hidden="true" />
                 </div>
-                <span className="font-display font-bold text-sm text-[var(--color-brand-primary)] uppercase tracking-wider text-center">
-                  {barber.name}
-                </span>
-                <span className="font-body text-xs text-[var(--color-text-muted)] text-center">
-                  {barber.role}
-                </span>
                 <p className="visually-hidden">
                   {barber.altText || `${barber.name}, ${barber.role} at Groomd`}
                 </p>
@@ -85,6 +80,14 @@ export function BarbersPreview() {
             </article>
           ))}
         </div>
+
+        <Link
+          href="/about"
+          className="mt-10 inline-flex items-center gap-1.5 font-body font-bold text-xs uppercase tracking-wider text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)]"
+        >
+          <span>About the team</span>
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+        </Link>
       </div>
     </section>
   );

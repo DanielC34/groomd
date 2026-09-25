@@ -26,14 +26,14 @@ export function CategoryNav() {
                 onClick={() => scrollToCategory(`category-${cat.category.toLowerCase()}`)}
                 className="px-3.5 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-background)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)] text-[var(--color-brand-primary)] font-semibold whitespace-nowrap transition-fast"
               >
-                {cat.label}
+                {cat.category}
               </button>
             ))}
           </div>
 
           <div className="hidden md:flex items-center gap-1.5 text-[var(--color-text-muted)] shrink-0">
             <MapPin className="w-3.5 h-3.5 text-[var(--color-brand-primary)]" aria-hidden="true" />
-            <span>Kabulonga Studio, {businessInfo.city}</span>
+            <span>{businessInfo.address.short}</span>
           </div>
         </div>
       </div>

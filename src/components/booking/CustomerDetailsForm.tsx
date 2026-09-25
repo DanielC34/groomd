@@ -1,25 +1,33 @@
 "use client";
 
+import { BookingActionBar } from "./BookingActionBar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, Lock } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
+// Messages: CONTENT §9.8.
 const CustomerDetailsSchema = z.object({
   fullName: z
     .string()
-    .min(2, "Please enter your full name (at least 2 characters)")
-    .trim(),
+    .trim()
+    .min(1, "Please enter your full name.")
+    .min(2, "Your name needs at least 2 characters."),
   phone: z
     .string()
-    .regex(/^[\d\s+]+$/, "Phone must contain only digits, spaces, or +")
-    .min(8, "Phone number is too short")
-    .trim(),
-  email: z.string().email("Please enter a valid email address").trim(),
+    .trim()
+    .min(1, "Please enter your mobile number.")
+    .regex(/^[\d\s+]+$/, "Please enter a valid phone number, e.g. +260 97 123 4567.")
+    .min(8, "Please enter a valid phone number, e.g. +260 97 123 4567."),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Please enter your email address.")
+    .email("Please enter a valid email address, e.g. name@example.com."),
   notes: z.string().max(500, "Notes must be 500 characters or less").optional(),
   termsAccepted: z.literal(true, {
-    message: "You must agree to the Terms & Conditions to continue",
+    message: "Please agree to the Terms & Conditions to continue.",
   }),
 });
 
@@ -59,11 +67,8 @@ export function CustomerDetailsForm({
     <div className="w-full">
       <div className="mb-6">
         <h2 className="font-display font-bold text-2xl md:text-3xl text-[var(--color-brand-primary)] mb-1">
-          Your Details
+          Your details
         </h2>
-        <p className="font-body text-[var(--color-text-secondary)] text-sm sm:text-base">
-          Almost there. We just need a few details to complete your booking.
-        </p>
       </div>
 
       <form
@@ -83,12 +88,12 @@ export function CustomerDetailsForm({
             id="fullName"
             type="text"
             autoComplete="name"
-            placeholder="Mutale Zulu"
+            placeholder="e.g. Mutale Zulu"
             aria-required="true"
             aria-invalid={!!errors.fullName}
             aria-describedby={errors.fullName ? "fullName-error" : undefined}
             {...register("fullName")}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/20"
+            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)] focus-visible:ring-offset-2 focus:ring-2 focus:ring-[var(--color-brand-primary)] focus:ring-offset-2 aria-[invalid=true]:border-2 aria-[invalid=true]:border-[var(--color-error)]"
           />
           {errors.fullName && (
             <p id="fullName-error" role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
@@ -110,18 +115,18 @@ export function CustomerDetailsForm({
             id="phone"
             type="tel"
             autoComplete="tel"
-            placeholder="+260 97 000 0000"
+            placeholder="+260 97 123 4567"
             aria-required="true"
             aria-invalid={!!errors.phone}
-            aria-describedby="phone-hint"
+            aria-describedby={errors.phone ? "phone-hint phone-error" : "phone-hint"}
             {...register("phone")}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/20"
+            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)] focus-visible:ring-offset-2 focus:ring-2 focus:ring-[var(--color-brand-primary)] focus:ring-offset-2 aria-[invalid=true]:border-2 aria-[invalid=true]:border-[var(--color-error)]"
           />
           <p id="phone-hint" className="mt-1 font-body text-xs text-[var(--color-text-muted)]">
-            We&apos;ll only call if something changes with your booking. No spam or marketing.
+            We&apos;ll only call if something changes with your booking.
           </p>
           {errors.phone && (
-            <p role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
+            <p id="phone-error" role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               {errors.phone.message}
             </p>
@@ -134,7 +139,7 @@ export function CustomerDetailsForm({
             htmlFor="email"
             className="block font-body font-semibold text-sm text-[var(--color-brand-primary)] mb-1.5"
           >
-            Email address <span className="text-[var(--color-error)]" aria-hidden="true">*</span>
+            Email <span className="text-[var(--color-error)]" aria-hidden="true">*</span>
           </label>
           <input
             id="email"
@@ -143,15 +148,15 @@ export function CustomerDetailsForm({
             placeholder="you@example.com"
             aria-required="true"
             aria-invalid={!!errors.email}
-            aria-describedby="email-hint"
+            aria-describedby={errors.email ? "email-hint email-error" : "email-hint"}
             {...register("email")}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/20"
+            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)] focus-visible:ring-offset-2 focus:ring-2 focus:ring-[var(--color-brand-primary)] focus:ring-offset-2 aria-[invalid=true]:border-2 aria-[invalid=true]:border-[var(--color-error)]"
           />
           <p id="email-hint" className="mt-1 font-body text-xs text-[var(--color-text-muted)]">
             In case we need to reach you about this booking. We don&apos;t send marketing.
           </p>
           {errors.email && (
-            <p role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
+            <p id="email-error" role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               {errors.email.message}
             </p>
@@ -170,13 +175,16 @@ export function CustomerDetailsForm({
           <textarea
             id="notes"
             rows={4}
-            placeholder="Anything your barber should know, like a style you have in mind or if it&apos;s your first visit."
-            aria-describedby="notes-hint"
+            aria-invalid={!!errors.notes}
+            aria-describedby={errors.notes ? "notes-hint notes-error" : "notes-hint"}
             {...register("notes")}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] resize-y transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/20"
+            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] font-body text-sm text-[var(--color-brand-primary)] placeholder:text-[var(--color-text-muted)] resize-y transition-fast focus:outline-none focus:border-[var(--color-brand-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand-primary)] focus-visible:ring-offset-2 focus:ring-2 focus:ring-[var(--color-brand-primary)] focus:ring-offset-2 aria-[invalid=true]:border-2 aria-[invalid=true]:border-[var(--color-error)]"
           />
+          <p id="notes-hint" className="mt-1 font-body text-xs text-[var(--color-text-muted)]">
+            Anything your barber should know, like a style you have in mind or if it&apos;s your first visit.
+          </p>
           {errors.notes && (
-            <p role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
+            <p id="notes-error" role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               {errors.notes.message}
             </p>
@@ -195,18 +203,13 @@ export function CustomerDetailsForm({
               {...register("termsAccepted")}
               className="mt-0.5 w-4 h-4 rounded border-[var(--color-border-strong)] accent-[var(--color-brand-primary)] shrink-0"
             />
-            <label htmlFor="termsAccepted" className="font-body text-sm text-[var(--color-brand-primary)] leading-snug">
-              I agree to the Groomd{" "}
-              <a
-                href="/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline font-semibold hover:text-[var(--color-brand-secondary)]"
-              >
-                Terms & Conditions
-              </a>{" "}
-              and understand that payment is made in-store after my appointment.
-            </label>
+            {/* CONTENT §9.7: the Terms link sits outside the <label>, so tapping it never ticks the box. Same tab (no target). */}
+            <p className="font-body text-sm text-[var(--color-brand-primary)] leading-snug">
+              <label htmlFor="termsAccepted">I agree to the</label>{" "}
+              <a href="/terms" className="underline font-semibold hover:text-[var(--color-brand-secondary)]">
+                Terms &amp; Conditions
+              </a>
+            </p>
           </div>
           {errors.termsAccepted && (
             <p id="terms-error" role="alert" className="mt-1.5 flex items-center gap-1.5 font-body text-xs text-[var(--color-error)]">
@@ -216,19 +219,14 @@ export function CustomerDetailsForm({
           )}
         </div>
 
-        {/* Privacy notice */}
-        <div className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] border border-[var(--color-border)]">
-          <Lock className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" aria-hidden="true" />
-          <p className="font-body text-xs text-[var(--color-text-secondary)]">
-            Your contact details are stored securely solely to manage this appointment and are never shared or sold.
-          </p>
-        </div>
-
         {/* Navigation */}
-        <div className="flex items-center justify-between gap-4 pt-2">
+        <BookingActionBar
+          back={
           <Button type="button" variant="outline-wine" size="md" onClick={onBack}>
-            ← Back to Barber & Time
+            Back
           </Button>
+          }
+          primary={
           <Button
             type="submit"
             variant="solid-wine"
@@ -236,9 +234,10 @@ export function CustomerDetailsForm({
             loading={isSubmitting}
             className="sm:w-auto"
           >
-            Continue to Review & Confirm →
+            Continue
           </Button>
-        </div>
+          }
+        />
       </form>
     </div>
   );

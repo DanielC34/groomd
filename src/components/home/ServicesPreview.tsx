@@ -30,8 +30,9 @@ export function ServicesPreview() {
               id="services-preview-heading"
               className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)]"
             >
-              THE ESSENTIALS, DONE PROPERLY.
+              Cuts, fades and beard work
             </h2>
+            <p className="font-body text-base text-[var(--color-text-secondary)] mt-2">A short menu, done properly.</p>
           </div>
 
           <Link

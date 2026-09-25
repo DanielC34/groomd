@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma/client';
+import { getPrisma } from '@/lib/prisma/client';
+import { getAllBarbers } from '@/lib/data/barbers';
 import type { Prisma } from '@prisma/client';
 import { validateBookingRequest, validateBookingTimeRules, BookingRequest } from '@/lib/booking/validation';
 import { getServiceByIdChecked, getBarberByIdChecked } from '@/lib/booking/validation';
-import { createLusakaDate, lusakaDateToUtc, formatLusakaTime, formatLusakaDate } from '@/lib/booking/timezone';
+import { isBookingOverlapViolation } from '@/lib/booking/overlap-violation';
+import { lusakaDateTimeToUtc, addMinutes, formatLusakaTime, formatLusakaDate } from '@/lib/booking/timezone';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -24,12 +26,6 @@ export async function POST(request: NextRequest) {
 
     const { serviceId, barberPreference, barberId, date, time, customerName, customerPhone, customerEmail, notes } = body;
 
-    const [year, month, day] = date.split('-').map(Number);
-    const lusakaDate = createLusakaDate(year, month, day);
-    const [hours, minutes] = time.split(':').map(Number);
-    const lusakaStartAt = createLusakaDate(year, month, day, hours, minutes);
-    const lusakaEndAt = new Date(lusakaStartAt.getTime() + getServiceByIdChecked(serviceId).durationMinutes * 60 * 1000);
-
     const timeValidation = validateBookingTimeRules(serviceId, barberPreference, barberId, date, time);
     if (!timeValidation.valid) {
       return NextResponse.json(
@@ -44,10 +40,27 @@ export async function POST(request: NextRequest) {
       getBarberByIdChecked(barberId);
     }
 
-    const startAtUtc = lusakaDateToUtc(lusakaStartAt);
-    const endAtUtc = lusakaDateToUtc(lusakaEndAt);
+    // Absolute instants: `time` is Lusaka wall-clock time; duration is plain arithmetic.
+    const startAtUtc = lusakaDateTimeToUtc(date, time);
+    const endAtUtc = addMinutes(startAtUtc, service.durationMinutes);
 
-    const result = await prisma.$transaction(async (tx) => {
+    // The availability check below is not exclusive under READ COMMITTED: two simultaneous
+    // requests can both pass it. The "Booking_barber_no_overlap" exclusion constraint makes
+    // PostgreSQL reject the loser (23P01). We then re-run the transaction: a specific-barber
+    // request now sees the conflict (409); a no-preference request moves to the next free barber.
+    const MAX_ATTEMPTS = 3;
+    let result: Awaited<ReturnType<typeof attempt>> | undefined;
+    for (let i = 0; i < MAX_ATTEMPTS && !result; i++) {
+      try {
+        result = await attempt();
+      } catch (error) {
+        if (!isBookingOverlapViolation(error)) throw error;
+      }
+    }
+    if (!result) throw new Error('CONFLICT');
+
+    async function attempt() {
+      return getPrisma().$transaction(async (tx) => {
       const existingBookings = await tx.booking.findMany({
         where: {
           status: 'confirmed',
@@ -72,7 +85,8 @@ export async function POST(request: NextRequest) {
         }
         selectedBarberId = barberId;
       } else {
-        const allBarbers = await tx.barber.findMany();
+        // Same deterministic order as the availability engine ("first available barber").
+        const allBarbers = getAllBarbers();
         if (allBarbers.length === 0) {
           throw new Error('No barbers available');
         }
@@ -108,7 +122,8 @@ export async function POST(request: NextRequest) {
       });
 
       return { booking, selectedBarberId };
-    });
+      });
+    }
 
     return NextResponse.json(
       {
@@ -122,9 +137,11 @@ export async function POST(request: NextRequest) {
         barber: {
           id: result.selectedBarberId,
         },
-        date: formatLusakaDate(lusakaDate),
-        startTime: time,
-        endTime: formatLusakaTime(lusakaEndAt),
+        date: formatLusakaDate(startAtUtc),
+        startTime: formatLusakaTime(startAtUtc),
+        endTime: formatLusakaTime(endAtUtc),
+        startAt: startAtUtc.toISOString(),
+        endAt: endAtUtc.toISOString(),
         customerName,
       },
       { status: 201 }

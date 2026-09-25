@@ -1,35 +1,30 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
+/**
+ * Prisma 7 requires a driver adapter. The client is created lazily so that
+ * `next build` (which imports route modules) does not need DATABASE_URL.
+ * At runtime a missing DATABASE_URL fails loudly instead of silently.
+ */
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
 function createPrismaClient(): PrismaClient {
-  if (!process.env.DATABASE_URL) {
-    // During build or when no database is configured, return a mock client
-    // that throws helpful errors when methods are called
-    return new Proxy({} as PrismaClient, {
-      get(_target, prop) {
-        if (prop === '$connect' || prop === '$disconnect' || prop === '$on' || prop === '$use' || prop === '$extends') {
-          return () => Promise.resolve();
-        }
-        return () => {
-          throw new Error(
-            `Prisma Client method "${String(prop)}" called but no DATABASE_URL is configured. ` +
-            'This is expected during build time. For runtime, set DATABASE_URL environment variable.'
-          );
-        };
-      },
-    });
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set. Configure it in the environment to use the booking database.');
   }
 
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    adapter: new PrismaPg({ connectionString }),
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-export default prisma;
+export function getPrisma(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}

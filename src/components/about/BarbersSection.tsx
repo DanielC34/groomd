@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, User, Info } from "lucide-react";
+import { ArrowRight, User } from "lucide-react";
 import { getAllBarbers } from "@/lib/data/barbers";
 
 export function BarbersSection() {
@@ -14,21 +14,21 @@ export function BarbersSection() {
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 rounded-full bg-[var(--color-brand-primary)] inline-block" aria-hidden="true" />
             <p className="eyebrow text-[var(--color-brand-primary)] tracking-[0.16em]">
-              OUR BARBERS
+              THE BARBERS
             </p>
           </div>
           <h2
             id="barbers-section-heading"
             className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)] mb-3"
           >
-            GOOD HANDS. GOOD PEOPLE.
+            Meet the barbers
           </h2>
           <p className="font-body text-sm sm:text-base text-[var(--color-text-secondary)]">
-            Three barbers, different strengths, one standard: take the time to get it right.
+            Three barbers, each with their own strengths. All of them offer every service on the menu.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {barbers.map((barber) => (
             <article
               key={barber.id}
@@ -36,15 +36,9 @@ export function BarbersSection() {
             >
               {/* Photo placeholder 4:5 ratio */}
               <div className="aspect-[4/5] bg-[var(--color-surface-muted)] relative overflow-hidden flex flex-col items-center justify-center p-6 border-b border-[var(--color-border)]">
-                <div className="w-20 h-20 rounded-full bg-[#EBDDC3] flex items-center justify-center text-[var(--color-brand-primary)] mb-3">
+                <div className="w-20 h-20 rounded-full bg-[var(--color-background)] flex items-center justify-center text-[var(--color-brand-primary)] mb-3">
                   <User className="w-10 h-10" aria-hidden="true" />
                 </div>
-                <span className="font-display font-bold text-sm text-[var(--color-brand-primary)] uppercase tracking-wider text-center">
-                  {barber.name}
-                </span>
-                <span className="font-body text-xs text-[var(--color-text-muted)] text-center">
-                  {barber.role}
-                </span>
                 <p className="visually-hidden">
                   {barber.altText || `${barber.name}, ${barber.role} at Groomd`}
                 </p>
@@ -90,13 +84,6 @@ export function BarbersSection() {
           ))}
         </div>
 
-        {/* Info callout box */}
-        <div className="p-4 rounded-[var(--radius-lg)] bg-[#FAF4E6] border border-[#E8DCC4] flex items-center gap-3 text-xs font-body text-[var(--color-text-secondary)] shadow-xs">
-          <Info className="w-4 h-4 text-[var(--color-brand-primary)] shrink-0" aria-hidden="true" />
-          <p>
-            All three barbers work full studio hours (Monday through Saturday) and perform all services across our menu with equal care.
-          </p>
-        </div>
       </div>
     </section>
   );

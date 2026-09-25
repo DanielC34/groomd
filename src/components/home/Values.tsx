@@ -1,25 +1,22 @@
 "use client";
 
-import { Clock, DollarSign, Users } from "lucide-react";
+import { Clock, Tag, Users } from "lucide-react";
 
 const values = [
   {
     icon: Clock,
-    title: "TIME SET ASIDE FOR YOU",
-    description:
-      "Your appointment is your time in the chair. Barbers stay focused on one cut at a time, with no rushing you through.",
+    title: "Time set aside for you",
+    description: "Every appointment is booked for the full length of your service, so nobody rushes your cut.",
   },
   {
-    icon: DollarSign,
-    title: "PRICES YOU CAN SEE",
-    description:
-      "Clear, honest prices before you book. Pay in-store after your service via card, cash, or mobile payment. No surprises.",
+    icon: Tag,
+    title: "Prices you can see",
+    description: "Every service is listed with its price and time before you book. No surprises at the chair.",
   },
   {
     icon: Users,
-    title: "YOUR BARBER, YOUR CALL",
-    description:
-      "Choose your preferred specialist, or pick \"No preference\" and we'll assign the first skilled chair available for your slot.",
+    title: "Your barber, your call",
+    description: "Pick the barber you trust, or choose no preference and we'll seat you with whoever is free.",
   },
 ] as const;
 
@@ -31,14 +28,14 @@ export function Values() {
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 rounded-full bg-[var(--color-brand-primary)] inline-block" aria-hidden="true" />
             <p className="eyebrow text-[var(--color-brand-primary)] tracking-[0.16em]">
-              THE GROOMD STANDARD
+              WHY GROOMD
             </p>
           </div>
           <h2
             id="values-heading"
             className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)] max-w-3xl"
           >
-            A BARBERSHOP THAT RESPECTS YOUR TIME.
+            A barbershop that respects your time.
           </h2>
         </header>
 

@@ -24,3 +24,12 @@ export function getOpeningHours(day: DayOfWeek): OpeningHours | undefined {
 export function getShortHoursString(): string {
   return 'Mon–Fri 09:00–18:00 · Sat 08:00–16:00 · Sun Closed';
 }
+
+/** CONTENT §4: "Today: {open}–{close}" / "Today: Closed" (no open-now logic). */
+export function getTodayLine(day: DayOfWeek): string {
+  const hours = getOpeningHours(day);
+  return !hours || hours.closed ? 'Today: Closed' : `Today: ${hours.open}–${hours.close}`;
+}
+
+/** CONTENT §6.2 quick-info hours (Mon–Sat only). */
+export const QUICK_INFO_HOURS = 'Mon–Fri 09:00–18:00 · Sat 08:00–16:00';

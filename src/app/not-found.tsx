@@ -1,13 +1,10 @@
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-background)]">
-      <Header />
-      <main id="main-content" className="flex-1 flex items-center justify-center py-16 lg:py-24">
+    <>
+      <div className="flex-1 flex items-center justify-center py-16 lg:py-24">
         <div className="container max-w-md text-center">
           <span className="block text-6xl md:text-9xl font-display font-extrabold text-[var(--color-surface-muted)]/50 aria-hidden mb-4">
             404
@@ -27,8 +24,7 @@ export default function NotFound() {
             </Button>
           </div>
         </div>
-      </main>
-      <Footer omitInvitationBand />
-    </div>
+      </div>
+    </>
   );
 }

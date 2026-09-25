@@ -9,6 +9,8 @@ export interface BookingSummaryProps {
   selectedTimeText?: string; // e.g. "14:30 – 15:15 (45 min)"
   onEditService?: () => void;
   onEditBarberTime?: () => void;
+  /** Rendered inside the mobile action-bar summary: no sticky positioning, border or shadow. */
+  embedded?: boolean;
 }
 
 export function BookingSummary({
@@ -19,16 +21,23 @@ export function BookingSummary({
   selectedTimeText,
   onEditService,
   onEditBarberTime,
+  embedded = false,
 }: BookingSummaryProps) {
   const service = selectedServiceId ? getServiceById(selectedServiceId) : undefined;
   const showBarber = currentStep >= 2;
   const showDateTime = currentStep >= 2;
 
   return (
-    <aside className="w-full bg-[#FAF4E6] border border-[#E8DCC4] rounded-[var(--radius-lg)] p-5 md:p-6 shadow-sm sticky top-24">
+    <aside
+      className={
+        embedded
+          ? "w-full p-3"
+          : "w-full bg-[var(--color-surface)] border border-[var(--color-border)] border-t-4 border-t-[var(--color-brand-primary)] rounded-[var(--radius-lg)] p-5 md:p-6 shadow-[var(--shadow-1)] sticky top-24"
+      }
+    >
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4 mb-4">
         <h3 className="font-display font-bold text-lg text-[var(--color-brand-primary)]">
-          Appointment Summary
+          Appointment
         </h3>
         <span className="text-[10px] font-body font-semibold text-[var(--color-text-muted)] uppercase tracking-wider bg-[var(--color-brand-accent)] px-2 py-0.5 rounded-full">
           Step {currentStep} of 4
@@ -66,7 +75,7 @@ export function BookingSummary({
               </span>
             </div>
           ) : (
-            <span className="italic text-[var(--color-text-muted)]">Select a service</span>
+            <span className="italic text-[var(--color-text-muted)]">Not selected yet</span>
           )}
         </div>
 
@@ -91,7 +100,7 @@ export function BookingSummary({
             </span>
             {(!barberName || barberName === "No preference") && (
               <span className="text-[var(--color-text-muted)] text-[10px] block mt-0.5">
-                First available barber assigned
+                We&apos;ll assign the first available barber.
               </span>
             )}
           </div>
@@ -127,10 +136,10 @@ export function BookingSummary({
         {/* Location */}
         <div className="pb-3 border-b border-[var(--color-border)]/60">
           <span className="block font-semibold uppercase tracking-wider text-[var(--color-text-muted)] text-[10px] mb-1">
-            STUDIO LOCATION
+            ADDRESS
           </span>
           <span className="font-body font-bold text-sm text-[var(--color-brand-primary)] block">
-            Kabulonga Studio
+            {businessInfo.name}
           </span>
           <span className="text-[var(--color-text-muted)] text-xs block truncate">
             {businessInfo.address.full}
@@ -141,10 +150,10 @@ export function BookingSummary({
         <div className="pt-1 flex items-end justify-between">
           <div>
             <span className="block font-semibold uppercase tracking-wider text-[var(--color-text-muted)] text-[10px]">
-              TOTAL ESTIMATE
+              Price
             </span>
             <span className="text-[10px] text-[var(--color-text-muted)]">
-              No payment online · Pay in-store
+              No payment needed now · Pay in-store
             </span>
           </div>
           <span className="font-display font-extrabold text-2xl text-[var(--color-brand-primary)]">
@@ -152,28 +161,6 @@ export function BookingSummary({
           </span>
         </div>
 
-        {/* Cancellation policy */}
-        <div className="mt-3 flex items-start gap-2 bg-[var(--color-success-tint)] rounded-[var(--radius-md)] p-3 border border-[var(--color-success)]/20">
-          <span className="text-[var(--color-success)] text-base shrink-0" aria-hidden="true">✓</span>
-          <p className="font-body text-[11px] text-[var(--color-success)]">
-            Free rescheduling or cancellation up to 2 hours before your appointment.
-          </p>
-        </div>
-
-        {/* Help */}
-        <div className="flex items-start gap-2 bg-[var(--color-surface)] rounded-[var(--radius-md)] p-3 border border-[var(--color-border)]">
-          <span className="text-base shrink-0" aria-hidden="true">📞</span>
-          <p className="font-body text-[11px] text-[var(--color-text-secondary)]">
-            <strong className="text-[var(--color-brand-primary)]">Need assistance?</strong>{" "}
-            Call the studio at{" "}
-            <a
-              href={`tel:${businessInfo.phone.tel}`}
-              className="font-semibold underline text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)]"
-            >
-              {businessInfo.phone.display}
-            </a>
-          </p>
-        </div>
       </div>
     </aside>
   );

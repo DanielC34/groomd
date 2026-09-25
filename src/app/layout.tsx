@@ -21,7 +21,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Groomd — Men's Grooming Studio",
   description: "Groomd is a modern barbershop in Lusaka for cuts, fades, beard work and hot towel shaves, with online booking and clear prices.",
-  metadataBase: new URL("https://groomd.example"),
+  // No production URL yet: set NEXT_PUBLIC_SITE_URL at deploy time. Localhost keeps builds safe.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   openGraph: {
     title: "Groomd — Men's Grooming Studio",
     description: "Groomd is a modern barbershop in Lusaka for cuts, fades, beard work and hot towel shaves, with online booking and clear prices.",
@@ -39,10 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text-primary)]">
         <Header />
-        <main id="main-content" className="flex-1" role="main">
+        <main id="main-content" className="flex-1" role="main" tabIndex={-1}>
           {children}
         </main>
-        <Footer />
+        <Footer year={new Date().getFullYear()} />
       </body>
     </html>
   );

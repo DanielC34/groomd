@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingActionBar } from "./BookingActionBar";
 import { clsx } from "clsx";
 import { services, serviceCategories } from "@/lib/data/services";
 import type { Service, ServiceCategory } from "@/lib/types";
@@ -30,10 +31,10 @@ export function ServiceSelection({
     <div className="w-full">
       <div className="mb-6">
         <h2 className="font-display font-bold text-2xl md:text-3xl text-[var(--color-brand-primary)] mb-1">
-          Select your grooming ritual
+          Choose a service
         </h2>
         <p className="font-body text-[var(--color-text-secondary)] text-sm sm:text-base">
-          Select one service or package. Choose your preferred barber in the next step.
+          One service per appointment. Want a cut and beard? Choose the Cut &amp; Beard package.
         </p>
       </div>
 
@@ -46,13 +47,12 @@ export function ServiceSelection({
             <div key={catInfo.category} className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-body font-semibold uppercase tracking-[0.16em] text-[var(--color-text-secondary)] mb-2">
                 {categoryIcons[catInfo.category]}
-                <span>{catInfo.label.toUpperCase()}</span>
+                <span>{catInfo.label}</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {categoryServices.map((service: Service) => {
                   const isSelected = service.id === selectedServiceId;
-                  const isPackage = service.id === "cut-and-beard";
 
                   return (
                     <div
@@ -80,18 +80,13 @@ export function ServiceSelection({
                             <h3 className="font-display font-bold text-lg text-[var(--color-brand-primary)]">
                               {service.name}
                             </h3>
-                            {isPackage && (
-                              <span className="inline-block px-2 py-0.5 text-[10px] font-body font-semibold rounded-full bg-[#EBDDC3] text-[var(--color-brand-primary)]">
-                                Client Favorite
-                              </span>
-                            )}
                           </div>
                           <div
                             className={clsx(
                               "w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-fast border",
                               isSelected
                                 ? "bg-[var(--color-brand-primary)] text-[var(--color-brand-accent)] border-[var(--color-brand-primary)]"
-                                : "border-[var(--color-border-strong)] bg-white"
+                                : "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
                             )}
                             aria-hidden="true"
                           >
@@ -122,7 +117,10 @@ export function ServiceSelection({
         })}
       </div>
 
-      <div className="mt-10 flex justify-end">
+      {/* Spacer instead of a wrapper, so the action bar stays sticky within the whole step. */}
+      <div className="h-10" aria-hidden="true" />
+      <BookingActionBar
+        primary={
         <Button
           variant="solid-wine"
           size="lg"
@@ -132,7 +130,8 @@ export function ServiceSelection({
         >
           Continue to Barber & Time →
         </Button>
-      </div>
+        }
+      />
     </div>
   );
 }

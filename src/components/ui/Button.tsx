@@ -32,7 +32,7 @@ const variantStyles = {
   book: {
     light: `
       bg-[var(--color-brand-accent)] text-[var(--color-text-on-accent-primary)]
-      border-1.5 border-[var(--color-brand-primary)]
+      border-[1.5px] border-[var(--color-brand-primary)]
       hover:bg-[var(--color-accent-hover)]
       active:bg-[var(--color-accent-pressed)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-light)] focus-visible:ring-offset-[var(--color-brand-accent)]
@@ -62,7 +62,7 @@ const variantStyles = {
       disabled:bg-[var(--color-surface-muted)] disabled:text-[var(--color-text-muted)]
     `,
     strong: `
-      bg-transparent border-1.5 border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
       hover:bg-[var(--color-brand-accent)] hover:text-[var(--color-text-on-accent-primary)]
       active:bg-[var(--color-brand-accent)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
@@ -78,21 +78,21 @@ const variantStyles = {
   },
   outline: {
     light: `
-      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
       hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
       active:bg-[var(--color-brand-primary)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-light)] focus-visible:ring-offset-[var(--color-brand-accent)]
       disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
     `,
     strong: `
-      bg-transparent border-1.5 border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
       hover:bg-[var(--color-brand-accent)] hover:text-[var(--color-text-on-accent-primary)]
       active:bg-[var(--color-brand-accent)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
       disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
     `,
     accent: `
-      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
       hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
       active:bg-[var(--color-brand-primary)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
@@ -124,21 +124,21 @@ const variantStyles = {
   },
   "outline-wine": {
     light: `
-      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
       hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
       active:bg-[var(--color-brand-primary)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-light)] focus-visible:ring-offset-[var(--color-brand-accent)]
       disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
     `,
     strong: `
-      bg-transparent border-1.5 border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
       hover:bg-[var(--color-brand-accent)] hover:text-[var(--color-text-on-accent-primary)]
       active:bg-[var(--color-brand-accent)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
       disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
     `,
     accent: `
-      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      bg-transparent border-[1.5px] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
       hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
       active:bg-[var(--color-brand-primary)] active:scale-[0.98]
       focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
@@ -183,6 +183,9 @@ const Comp = forwardRef<HTMLButtonElement, ButtonProps>(
       baseStyles,
       variantStyles[variant]?.[surfaceKey] || variantStyles[variant].light,
       sizeStyles[size],
+      // Links rendered via asChild get the base-layer `a` underline; buttons never show it.
+      // The text variant is a text link by design (DESIGN §12: "No thanks" honey, underlined).
+      variant === "text" ? "underline" : "no-underline",
       fullWidth && "w-full",
       icon && "gap-2",
       className

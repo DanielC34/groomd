@@ -22,9 +22,6 @@ export function BookingStepper({ currentStep, onStepClick }: BookingStepperProps
           <span className="font-body font-semibold text-[var(--color-brand-primary)]">
             Step {currentStep} of 4 · {steps[currentStep - 1]?.title}
           </span>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {Math.round((currentStep / 4) * 100)}% completed
-          </span>
         </div>
         <div className="w-full h-1.5 bg-[var(--color-surface-muted)] rounded-full overflow-hidden">
           <div
@@ -35,27 +32,27 @@ export function BookingStepper({ currentStep, onStepClick }: BookingStepperProps
       </div>
 
       {/* Desktop & Tablet view (>= 768px) */}
-      <div className="hidden md:grid md:grid-cols-4 gap-3">
+      {/* Only completed steps are interactive (real buttons). The current and future steps are
+          plain list items, so the stepper can never jump ahead to an invalid step. */}
+      <ol className="hidden md:grid md:grid-cols-4 gap-3">
         {steps.map((step) => {
           const isCurrent = step.number === currentStep;
           const isCompleted = step.number < currentStep;
-          const isClickable = isCompleted && onStepClick;
+          const isClickable = isCompleted && !!onStepClick;
+          const state = isCompleted ? "completed" : isCurrent ? "current" : "not started";
 
-          return (
-            <div
-              key={step.number}
-              onClick={() => isClickable && onStepClick(step.number)}
-              className={clsx(
-                "flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] border transition-fast",
-                isCurrent && "bg-[var(--color-surface-muted)]/60 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]",
-                isCompleted && "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-brand-primary)] cursor-pointer hover:border-[var(--color-brand-secondary)]",
-                !isCurrent && !isCompleted && "bg-[var(--color-surface)]/50 border-[var(--color-border)] text-[var(--color-text-muted)] opacity-75"
-              )}
-              role={isClickable ? "button" : undefined}
-              tabIndex={isClickable ? 0 : undefined}
-              aria-current={isCurrent ? "step" : undefined}
-            >
-              <div
+          const boxClass = clsx(
+            "w-full flex items-center gap-3 p-3.5 rounded-[var(--radius-lg)] border transition-fast text-left",
+            isCurrent && "bg-[var(--color-surface-muted)]/60 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]",
+            isCompleted && "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-brand-primary)]",
+            isClickable && "cursor-pointer hover:border-[var(--color-brand-secondary)]",
+            !isCurrent && !isCompleted && "bg-[var(--color-surface)]/50 border-[var(--color-border)] text-[var(--color-text-muted)] opacity-75"
+          );
+
+          const content = (
+            <>
+              <span
+                aria-hidden="true"
                 className={clsx(
                   "w-8 h-8 rounded-full flex items-center justify-center font-display font-bold text-sm shrink-0 transition-fast",
                   isCurrent && "bg-[var(--color-brand-primary)] text-[var(--color-brand-light)]",
@@ -64,19 +61,32 @@ export function BookingStepper({ currentStep, onStepClick }: BookingStepperProps
                 )}
               >
                 {isCompleted ? <Check className="w-4 h-4" /> : step.number}
-              </div>
-              <div className="min-w-0">
+              </span>
+              <span className="min-w-0">
                 <span className="block text-[10px] font-body font-semibold uppercase tracking-wider text-[var(--color-text-muted)] leading-tight">
                   STEP {step.number}
                 </span>
                 <span className={clsx("block text-xs sm:text-sm font-body font-semibold truncate leading-tight", isCurrent ? "text-[var(--color-brand-primary)]" : "text-[var(--color-text-secondary)]")}>
                   {step.title}
                 </span>
-              </div>
-            </div>
+                <span className="visually-hidden">, {state}</span>
+              </span>
+            </>
+          );
+
+          return (
+            <li key={step.number} aria-current={isCurrent ? "step" : undefined}>
+              {isClickable ? (
+                <button type="button" onClick={() => onStepClick(step.number)} className={boxClass}>
+                  {content}
+                </button>
+              ) : (
+                <div className={boxClass}>{content}</div>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ol>
     </nav>
   );
 }

@@ -1,23 +1,12 @@
 import { MapPin, Phone, Mail, ArrowRight } from "lucide-react";
-import { businessInfo } from "@/lib/data/business";
+import { businessInfo, addressLines } from "@/lib/data/business";
 
 export function DirectChannels() {
   const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(businessInfo.mapSearch)}`;
 
   return (
-    <section className="bg-[var(--color-background)] py-16 lg:py-20" aria-labelledby="direct-channels-heading">
+    <section className="bg-[var(--color-background)] py-16 lg:py-20">
       <div className="container">
-        <header className="mb-12">
-          <span className="block font-body text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)] mb-1">
-            DIRECT CHANNELS
-          </span>
-          <h2
-            id="direct-channels-heading"
-            className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)]"
-          >
-            VISIT GROOMD
-          </h2>
-        </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {/* Card 1: Studio Address */}
@@ -27,23 +16,15 @@ export function DirectChannels() {
                 <MapPin className="w-5 h-5" aria-hidden="true" />
               </div>
 
-              <span className="block font-body text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
-                LOCATION
-              </span>
+              <h2 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
+                Address
+              </h2>
 
-              <h3 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
-                Studio Address
-              </h3>
-
-              <address className="not-italic font-body text-xs text-[var(--color-text-secondary)] leading-relaxed mb-4">
-                <p>Shop 3, Mopani Court</p>
-                <p>Kabulonga</p>
-                <p>Lusaka, Zambia</p>
+              <address className="not-italic font-body text-xs text-[var(--color-text-secondary)] leading-relaxed mb-6">
+                {addressLines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
               </address>
-
-              <p className="font-body text-[11px] text-[var(--color-text-muted)] mb-6">
-                Kabulonga, Lusaka · East of city centre
-              </p>
             </div>
 
             <div className="pt-4 border-t border-[var(--color-border)]">
@@ -52,7 +33,7 @@ export function DirectChannels() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 font-body font-bold text-xs uppercase tracking-wider text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)]"
-                aria-label="Get directions to Groomd Kabulonga in Google Maps"
+                aria-label="Get directions (opens Google Maps in a new tab)"
               >
                 <span>Get directions</span>
                 <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -67,13 +48,9 @@ export function DirectChannels() {
                 <Phone className="w-5 h-5" aria-hidden="true" />
               </div>
 
-              <span className="block font-body text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
-                DIRECT VOICE
-              </span>
-
-              <h3 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
+              <h2 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
                 Phone
-              </h3>
+              </h2>
 
               <a
                 href={`tel:${businessInfo.phone.tel}`}
@@ -83,20 +60,10 @@ export function DirectChannels() {
               </a>
 
               <p className="font-body text-xs text-[var(--color-text-secondary)] leading-relaxed mb-6">
-                Call to cancel or change a booking (ideally 2 hours before).
+                Call to cancel or change a booking.
               </p>
             </div>
 
-            <div className="pt-4 border-t border-[var(--color-border)]">
-              <a
-                href={`tel:${businessInfo.phone.tel}`}
-                className="inline-flex items-center gap-1.5 font-body font-bold text-xs uppercase tracking-wider text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)]"
-                aria-label={`Call Groomd front desk at ${businessInfo.phone.display}`}
-              >
-                <span>Call front desk</span>
-                <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-              </a>
-            </div>
           </article>
 
           {/* Card 3: Email */}
@@ -106,13 +73,9 @@ export function DirectChannels() {
                 <Mail className="w-5 h-5" aria-hidden="true" />
               </div>
 
-              <span className="block font-body text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
-                GENERAL ENQUIRIES
-              </span>
-
-              <h3 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
+              <h2 className="font-display font-bold text-lg text-[var(--color-brand-primary)] mb-2">
                 Email
-              </h3>
+              </h2>
 
               <a
                 href={`mailto:${businessInfo.email}`}
@@ -122,20 +85,10 @@ export function DirectChannels() {
               </a>
 
               <p className="font-body text-xs text-[var(--color-text-secondary)] leading-relaxed mb-6">
-                For general questions. For appointments, book online.
+                For general questions. For bookings, use online booking.
               </p>
             </div>
 
-            <div className="pt-4 border-t border-[var(--color-border)]">
-              <a
-                href={`mailto:${businessInfo.email}`}
-                className="inline-flex items-center gap-1.5 font-body font-bold text-xs uppercase tracking-wider text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)]"
-                aria-label={`Send email to ${businessInfo.email}`}
-              >
-                <span>Send message</span>
-                <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-              </a>
-            </div>
           </article>
         </div>
       </div>

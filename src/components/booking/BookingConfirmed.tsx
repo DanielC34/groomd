@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { CalendarDays, Clock, MapPin, Phone, Download } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { Check, Copy, Download } from "lucide-react";
+import { formatYmdDate } from "@/lib/booking/timezone";
 import { Button } from "@/components/ui/Button";
 import { getServiceById } from "@/lib/data/services";
 import { getBarberById } from "@/lib/data/barbers";
@@ -12,38 +14,29 @@ export interface BookingConfirmedProps {
   serviceId: string;
   assignedBarberId: string | null;
   date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  startTime: string; // HH:MM (Lusaka, display)
+  endTime: string; // HH:MM (Lusaka, display)
+  startAt: string; // absolute ISO instant (calendar)
+  endAt: string; // absolute ISO instant (calendar)
   customerName: string;
+  barberPreference: "specific" | "no-preference";
+  onBookAnother: () => void;
 }
 
-function formatReadableDate(dateStr: string): string {
-  const [y, mo, d] = dateStr.split("-").map(Number);
-  const date = new Date(Date.UTC(y, mo - 1, d));
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+/** ISO instant -> iCalendar/Google UTC stamp, e.g. 20260928T080000Z */
+function toUtcStamp(iso: string): string {
+  return new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
 
 function buildGoogleCalendarUrl(params: {
   title: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  startAt: string;
+  endAt: string;
   location: string;
   details: string;
 }): string {
-  const [y, mo, d] = params.date.split("-").map(Number);
-  const [sh, sm] = params.startTime.split(":").map(Number);
-  const [eh, em] = params.endTime.split(":").map(Number);
-
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const startStr = `${y}${pad(mo)}${pad(d)}T${pad(sh)}${pad(sm)}00`;
-  const endStr = `${y}${pad(mo)}${pad(d)}T${pad(eh)}${pad(em)}00`;
+  const startStr = toUtcStamp(params.startAt);
+  const endStr = toUtcStamp(params.endAt);
 
   const url = new URL("https://www.google.com/calendar/render");
   url.searchParams.set("action", "TEMPLATE");
@@ -56,21 +49,15 @@ function buildGoogleCalendarUrl(params: {
 
 function buildIcsContent(params: {
   title: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  startAt: string;
+  endAt: string;
   location: string;
   details: string;
   reference: string;
 }): string {
-  const [y, mo, d] = params.date.split("-").map(Number);
-  const [sh, sm] = params.startTime.split(":").map(Number);
-  const [eh, em] = params.endTime.split(":").map(Number);
-
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const dtStamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  const dtStart = `${y}${pad(mo)}${pad(d)}T${pad(sh)}${pad(sm)}00`;
-  const dtEnd = `${y}${pad(mo)}${pad(d)}T${pad(eh)}${pad(em)}00`;
+  const dtStamp = toUtcStamp(new Date().toISOString());
+  const dtStart = toUtcStamp(params.startAt);
+  const dtEnd = toUtcStamp(params.endAt);
 
   const escapeText = (text: string) =>
     text.replace(/[,;]/g, "\\$&").replace(/\n/g, "\\n");
@@ -96,6 +83,28 @@ function buildIcsContent(params: {
   return lines.join("\r\n");
 }
 
+/** CONTENT §9.11 event description (one-way copy; never synced). */
+function buildEventDetails(p: {
+  serviceName: string;
+  duration: number;
+  barberName: string;
+  price: number;
+  reference: string;
+  customerName: string;
+  siteUrl: string;
+}): string {
+  return [
+    `Service: ${p.serviceName} (${p.duration} min)`,
+    `Barber: ${p.barberName}`,
+    `Price: K ${p.price} (pay in-store)`,
+    `Booking reference: ${p.reference}`,
+    `Name: ${p.customerName}`,
+    "",
+    `Please arrive 5 minutes early. To cancel or change, call Groomd on ${businessInfo.phone.display}.`,
+    `Terms: ${p.siteUrl}/terms`,
+  ].join("\n");
+}
+
 export function BookingConfirmed({
   reference,
   serviceId,
@@ -103,41 +112,41 @@ export function BookingConfirmed({
   date,
   startTime,
   endTime,
+  startAt,
+  endAt,
   customerName,
+  barberPreference,
+  onBookAnother,
 }: BookingConfirmedProps) {
-  const router = useRouter();
+  const [copied, setCopied] = useState(false);
   const service = getServiceById(serviceId);
   const barber = assignedBarberId ? getBarberById(assignedBarberId) : undefined;
-  const readableDate = formatReadableDate(date);
+  const barberName = barber?.name ?? "First available barber";
+  const firstName = customerName.trim().split(/\s+/)[0];
+  const location = `${businessInfo.name}, ${businessInfo.address.full}`;
+  // Confirmation only renders client-side after a submit, so window is available.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
 
-  const googleCalUrl = service
-    ? buildGoogleCalendarUrl({
-        title: `Groomd: ${service.name}`,
-        date,
-        startTime,
-        endTime,
-        location: `${businessInfo.name}, ${businessInfo.address.full}`,
-        details: `Booking reference: ${reference}\nService: ${service.name} (${service.durationMinutes} min)\n${
-          barber ? `Barber: ${barber.name}` : "Barber: First available"
-        }\nPayment: Pay in-store (K ${service.price})`,
-      })
+  const event = service
+    ? {
+        title: `${service.name} at ${businessInfo.name}`,
+        startAt,
+        endAt,
+        location,
+        details: buildEventDetails({
+          serviceName: service.name,
+          duration: service.durationMinutes,
+          barberName,
+          price: service.price,
+          reference,
+          customerName,
+          siteUrl,
+        }),
+      }
     : null;
 
-  const icsContent = service
-    ? buildIcsContent({
-        title: `Groomd: ${service.name}`,
-        date,
-        startTime,
-        endTime,
-        location: `${businessInfo.name}, ${businessInfo.address.full}`,
-        details: `Booking reference: ${reference}\nService: ${service.name} (${service.durationMinutes} min)\n${
-          barber ? `Barber: ${barber.name}` : "Barber: First available"
-        }\nPayment: Pay in-store (K ${service.price})`,
-        reference,
-      })
-    : null;
-
-  const firstName = customerName.split(" ")[0];
+  const googleCalUrl = event ? buildGoogleCalendarUrl(event) : null;
+  const icsContent = event ? buildIcsContent({ ...event, reference }) : null;
 
   const downloadIcs = () => {
     if (!icsContent) return;
@@ -152,144 +161,144 @@ export function BookingConfirmed({
     URL.revokeObjectURL(url);
   };
 
+  const copyReference = async () => {
+    try {
+      await navigator.clipboard.writeText(reference);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable: the reference stays visible and selectable.
+    }
+  };
+
+  const rows: { label: string; value: React.ReactNode }[] = [
+    { label: "Service", value: service?.name ?? serviceId },
+    {
+      label: "Barber",
+      value: (
+        <>
+          {barberName}
+          {barberPreference === "no-preference" && (
+            <span className="block font-normal text-xs text-[var(--color-text-muted)]">Assigned: first available barber</span>
+          )}
+        </>
+      ),
+    },
+    { label: "Date", value: formatYmdDate(date) },
+    { label: "Time", value: `${startTime}–${endTime}` },
+    { label: "Duration", value: service ? `${service.durationMinutes} min` : "" },
+    { label: "Price", value: service ? `K ${service.price}` : "" },
+    { label: "Name", value: customerName },
+  ];
+
   return (
-    <div className="w-full">
-      {/* Success header */}
+    <div className="w-full max-w-2xl mx-auto">
+      {/* Success header (DESIGN §11: green ✓ in success-tint circle) */}
       <div className="text-center py-8 md:py-10">
         <div
-          className="w-16 h-16 rounded-full bg-[var(--color-success)] flex items-center justify-center mx-auto mb-5 text-white text-2xl"
+          className="w-14 h-14 rounded-full bg-[var(--color-success-tint)] border border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center mx-auto mb-5"
           aria-hidden="true"
         >
-          ✓
+          <Check className="w-7 h-7" strokeWidth={3} />
         </div>
-        <h2 className="font-display font-bold text-3xl md:text-4xl text-[var(--color-brand-primary)] mb-2">
-          You&rsquo;re booked in, {firstName}.
+        <p className="eyebrow text-[var(--color-brand-primary)] mb-2">BOOKING CONFIRMED</p>
+        <h2 className="font-display font-bold text-3xl md:text-4xl text-[var(--color-brand-primary)] mb-3">
+          See you soon, {firstName}.
         </h2>
         <p className="font-body text-[var(--color-text-secondary)] text-sm sm:text-base max-w-md mx-auto">
-          Your appointment is confirmed. See you at the studio.
+          Your appointment is booked. We don&apos;t send a confirmation message, so add it to your calendar or take a screenshot. Keep your reference handy.
         </p>
-        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-brand-accent)] border border-[var(--color-border)]">
+        <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-3 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] border border-[var(--color-border)]">
           <span className="font-body text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
             Booking reference
           </span>
-          <span className="font-display font-extrabold text-lg text-[var(--color-brand-primary)] tracking-widest">
+          <span className="font-display font-extrabold text-lg text-[var(--color-brand-primary)] tracking-widest select-all">
             {reference}
           </span>
+          <button
+            type="button"
+            onClick={copyReference}
+            aria-label={copied ? "Copied" : `Copy booking reference ${reference}`}
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-2 font-body text-xs font-semibold text-[var(--color-brand-primary)] underline"
+          >
+            {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+            <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+          </button>
         </div>
       </div>
 
-      {/* Summary card */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 md:p-6 mb-5">
-        <h3 className="font-display font-bold text-base text-[var(--color-brand-primary)] mb-4">
-          Appointment Summary
+      {/* Summary */}
+      <dl className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 md:p-6 mb-5 space-y-3 divide-y divide-[var(--color-border)]/60">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-start justify-between gap-4 pt-3 first:pt-0">
+            <dt className="font-body text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] w-24 shrink-0 mt-0.5">
+              {r.label}
+            </dt>
+            <dd className="flex-1 min-w-0 text-right font-body text-sm font-semibold text-[var(--color-brand-primary)] break-words">
+              {r.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      {/* Calendar (one-way event generation) */}
+      <section aria-labelledby="calendar-heading" className="mb-6">
+        <h3 id="calendar-heading" className="font-display font-bold text-base text-[var(--color-brand-primary)] mb-3">
+          Add to your calendar
         </h3>
-        <dl className="space-y-3">
-          <div className="flex items-start gap-3">
-            <CalendarDays className="w-4 h-4 text-[var(--color-brand-primary)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <dt className="visually-hidden">Date</dt>
-              <dd className="font-body font-semibold text-sm text-[var(--color-brand-primary)]">
-                {readableDate}
-              </dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Clock className="w-4 h-4 text-[var(--color-brand-primary)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <dt className="visually-hidden">Time</dt>
-              <dd className="font-body text-sm text-[var(--color-text-secondary)]">
-                {startTime} – {endTime}
-                {service ? ` · ${service.name} (${service.durationMinutes} min)` : ""}
-              </dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <MapPin className="w-4 h-4 text-[var(--color-brand-primary)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <dt className="visually-hidden">Location</dt>
-              <dd>
-                <span className="font-body font-semibold text-sm text-[var(--color-brand-primary)] block">
-                  {businessInfo.name} — Kabulonga Studio
-                </span>
-                <span className="font-body text-xs text-[var(--color-text-secondary)]">
-                  {businessInfo.address.full}
-                </span>
-              </dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Phone className="w-4 h-4 text-[var(--color-brand-primary)] shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <dt className="visually-hidden">Cancellation</dt>
-              <dd className="font-body text-xs text-[var(--color-text-secondary)]">
-                Free cancellation up to 2 hours before your appointment. Call{" "}
-                <a
-                  href={`tel:${businessInfo.phone.tel}`}
-                  className="font-semibold underline text-[var(--color-brand-primary)]"
-                >
-                  {businessInfo.phone.display}
-                </a>
-              </dd>
-            </div>
-          </div>
-        </dl>
-
-        {service && (
-          <div className="mt-4 pt-4 border-t border-[var(--color-border)]/60 flex items-end justify-between">
-            <div>
-              <span className="font-body text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] block">
-                Total Due In-Studio
-              </span>
-              <span className="font-body text-xs text-[var(--color-text-muted)]">
-                Cash, card & Airtel/MTN mobile money accepted
-              </span>
-            </div>
-            <span className="font-display font-extrabold text-2xl text-[var(--color-brand-primary)]">
-              K {service.price}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Calendar + CTA */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        {googleCalUrl && (
-          <a
-            href={googleCalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1"
-          >
-            <Button variant="outline-wine" size="md" className="w-full">
-              Add to Google Calendar
+        <div className="flex flex-col sm:flex-row gap-3">
+          {googleCalUrl && (
+            // One semantic element: the Button's styles applied to the link itself (asChild), not <a><button>.
+            <Button variant="solid-wine" size="md" className="flex-1" asChild>
+              <a href={googleCalUrl} target="_blank" rel="noopener noreferrer">
+                Add to Google Calendar
+              </a>
             </Button>
-          </a>
-        )}
-        {icsContent && (
-          <Button
-            variant="outline-wine"
-            size="md"
-            className="flex-1 flex items-center justify-center gap-2"
-            onClick={downloadIcs}
-          >
-            <Download className="w-4 h-4" aria-hidden="true" />
-            Add to Apple Calendar
-          </Button>
-        )}
-        <Button
-          variant="solid-wine"
-          size="md"
-          className="flex-1"
-          onClick={() => router.push("/")}
-        >
-          Back to Home
+          )}
+          {icsContent && (
+            <Button
+              variant="outline-wine"
+              size="md"
+              className="flex-1 flex items-center justify-center gap-2"
+              onClick={downloadIcs}
+            >
+              <Download className="w-4 h-4" aria-hidden="true" />
+              Add to Apple Calendar
+            </Button>
+          )}
+        </div>
+        <p className="mt-2 font-body text-xs text-[var(--color-text-muted)]">
+          Downloads an .ics file. Also works with Outlook and other calendar apps.
+        </p>
+      </section>
+
+      {/* Before you arrive */}
+      <section aria-labelledby="before-heading" className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 md:p-6 mb-6">
+        <h3 id="before-heading" className="font-display font-bold text-base text-[var(--color-brand-primary)] mb-3">
+          Before you arrive
+        </h3>
+        <ul className="space-y-2 font-body text-sm text-[var(--color-text-secondary)] list-disc pl-5">
+          <li>Arrive 5 minutes early so we can start on time.</li>
+          <li>Payment is taken in-store after your appointment.</li>
+          <li>
+            Need to cancel or change? Call us on{" "}
+            <a href={`tel:${businessInfo.phone.tel}`} className="font-semibold underline text-[var(--color-brand-primary)]">
+              {businessInfo.phone.display}
+            </a>
+            , ideally at least 2 hours before.
+          </li>
+        </ul>
+        <p className="mt-3 font-body text-sm text-[var(--color-brand-primary)]">{location}</p>
+      </section>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button variant="outline-wine" size="md" className="flex-1" onClick={onBookAnother}>
+          Book another appointment
+        </Button>
+        <Button variant="text" size="md" className="flex-1" asChild>
+          <Link href="/">Back to home</Link>
         </Button>
       </div>
-
-      {/* Fiction notice */}
-      <p className="font-body text-[10px] text-[var(--color-text-muted)] text-center leading-relaxed max-w-lg mx-auto">
-        Groomd is a fictional studio created for a design assessment. This booking confirmation is for demonstration purposes only and does not represent a real appointment.
-      </p>
     </div>
   );
 }

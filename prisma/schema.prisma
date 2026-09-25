@@ -39,6 +39,9 @@ model Barber {
   bookings Booking[]
 }
 
+// Double-booking protection: the "Booking_barber_no_overlap" exclusion constraint
+// (btree_gist, [startAt, endAt) per barber, confirmed only) is defined in
+// migrations/20260926000000_booking_no_overlap. Prisma cannot express it in this file.
 model Booking {
   id             String       @id @default(cuid())
   reference      String       @unique // GRD-XXXXXX format

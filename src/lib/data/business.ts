@@ -22,3 +22,6 @@ export const businessInfo: BusinessInfo = {
   email: 'hello@groomd.example',
   mapSearch: 'Kabulonga, Lusaka',
 };
+
+/** Address as display lines (Footer, Contact, Home visit block). */
+export const addressLines: string[] = businessInfo.address.multiLine.split(' / ');

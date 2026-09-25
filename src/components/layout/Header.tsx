@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Menu, X } from "lucide-react";
+import { useLusakaWeekday } from "@/lib/hooks/use-lusaka-weekday";
+import { businessInfo } from "@/lib/data/business";
+import { getTodayLine } from "@/lib/data/opening-hours";
 
 const navigation = [
   { href: "/", label: "Home" },
@@ -14,6 +17,9 @@ const navigation = [
 ];
 
 export function Header() {
+  // Read after hydration only, so the server HTML and first client render agree.
+  const today = useLusakaWeekday();
+  const todayLine = today ? getTodayLine(today) : null;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -105,7 +111,7 @@ export function Header() {
                   href={item.href}
                   className={clsx(
                     "font-body font-medium text-base tracking-[0.01em] transition-fast",
-                    "relative py-2",
+                    "relative py-2 no-underline",
                     isActive
                       ? "text-[var(--color-brand-accent)] font-semibold"
                       : "text-[var(--color-brand-light)] hover:text-[var(--color-brand-accent)]"
@@ -125,23 +131,9 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="book"
-              size="md"
-              className="hidden lg:inline-flex"
-              onSurface="strong"
-              asChild
-            >
-              <Link href="/book">Book Now</Link>
-            </Button>
-
-            <Button
-              variant="book"
-              size="sm"
-              className="lg:hidden"
-              onSurface="strong"
-              asChild
-            >
+            {/* One Book Now at every width. (Two responsive copies relied on `hidden` beating the
+                Button's own `inline-flex`, which is cascade-order dependent and showed both at 360px.) */}
+            <Button variant="book" size="sm" onSurface="strong" asChild>
               <Link href="/book">Book Now</Link>
             </Button>
 
@@ -208,7 +200,7 @@ MEN&apos;S GROOMING STUDIO
                         <Link
                           href={item.href}
                           className={clsx(
-                            "flex items-center gap-3 h-14 px-2 rounded-[var(--radius-md)]",
+                            "flex items-center gap-3 h-14 px-2 rounded-[var(--radius-md)] no-underline",
                             "font-display font-bold text-[1.5rem] leading-tight transition-fast",
                             isActive
                               ? "text-[var(--color-brand-accent)] bg-[var(--color-background-support)]"
@@ -242,14 +234,14 @@ MEN&apos;S GROOMING STUDIO
                       <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
-                      <a href="tel:+260970000000" className="hover:text-[var(--color-brand-accent)] transition-fast">+260 97 000 0000</a>
+                      <a href={`tel:${businessInfo.phone.tel}`} className="hover:text-[var(--color-brand-accent)] transition-fast">{businessInfo.phone.display}</a>
                     </p>
                     <p className="flex items-center gap-2">
                       <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span>Today: {getTodayHours()}</span>
+                      {todayLine && <span>{todayLine}</span>}
                     </p>
                   </div>
                 </div>
@@ -260,21 +252,6 @@ MEN&apos;S GROOMING STUDIO
       )}
     </>
   );
-}
-
-function getTodayHours(): string {
-  const now = new Date();
-  const day = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "Africa/Lusaka" });
-  const hours: Record<string, string> = {
-    Monday: "09:00–18:00",
-    Tuesday: "09:00–18:00",
-    Wednesday: "09:00–18:00",
-    Thursday: "09:00–18:00",
-    Friday: "09:00–18:00",
-    Saturday: "08:00–16:00",
-    Sunday: "Closed",
-  };
-  return hours[day] || "Closed";
 }
 
 function clsx(...classes: (string | undefined | null | false)[]) {

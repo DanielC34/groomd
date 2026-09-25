@@ -2,7 +2,7 @@
 
 import { MapPin, Clock, Calendar } from "lucide-react";
 import { businessInfo } from "@/lib/data/business";
-import { getShortHoursString } from "@/lib/data/opening-hours";
+import { QUICK_INFO_HOURS } from "@/lib/data/opening-hours";
 
 export function QuickInfo() {
   return (
@@ -24,9 +24,6 @@ export function QuickInfo() {
               <h3 className="font-display font-bold text-base text-[var(--color-brand-primary)] leading-tight">
                 {businessInfo.address.short}
               </h3>
-              <p className="font-body text-xs text-[var(--color-text-secondary)] mt-1">
-                Shop 3, Mopani Court, Lusaka
-              </p>
             </div>
           </article>
 
@@ -40,11 +37,8 @@ export function QuickInfo() {
                 HOURS
               </span>
               <h3 className="font-display font-bold text-base text-[var(--color-brand-primary)] leading-tight">
-                {getShortHoursString()}
+                {QUICK_INFO_HOURS}
               </h3>
-              <p className="font-body text-xs text-[var(--color-text-secondary)] mt-1">
-                Sat 08:00–16:00 · Sun Closed
-              </p>
             </div>
           </article>
 
@@ -58,11 +52,8 @@ export function QuickInfo() {
                 BOOKING
               </span>
               <h3 className="font-display font-bold text-base text-[var(--color-brand-primary)] leading-tight">
-                Online in 1 Minute
+                Book online, any time
               </h3>
-              <p className="font-body text-xs text-[var(--color-text-secondary)] mt-1">
-                Pay in-store · No advance payment needed.
-              </p>
             </div>
           </article>
         </div>

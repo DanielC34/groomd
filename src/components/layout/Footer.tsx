@@ -1,8 +1,10 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { businessInfo, addressLines } from "@/lib/data/business";
 
 const footerNavigation = [
   { href: "/", label: "Home" },
@@ -44,8 +46,17 @@ function clsx(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function Footer({ omitInvitationBand = false }: { omitInvitationBand?: boolean }) {
-  const currentYear = new Date().getFullYear();
+/**
+ * DESIGN §13 / CONTENT §6.8: the honey invitation band ends marketing pages only.
+ * It is omitted on /book, the legal pages and the 404 page.
+ */
+const INVITATION_BAND_ROUTES = new Set(["/", "/services", "/about", "/contact"]);
+
+/** `year` is computed by the server layout and passed down, so server and client render the same value. */
+export function Footer({ year }: { year: number }) {
+  const pathname = usePathname();
+  const omitInvitationBand = !INVITATION_BAND_ROUTES.has(pathname);
+  const currentYear = year;
 
   return (
     <footer className="bg-[var(--color-brand-primary)] text-[var(--color-text-on-strong)]" role="contentinfo">
@@ -102,7 +113,7 @@ export function Footer({ omitInvitationBand = false }: { omitInvitationBand?: bo
                   target="_blank"
                   rel="noopener noreferrer"
                   className={clsx(
-                    "flex-center w-10 h-10 rounded-full border-1.5 border-[var(--color-brand-accent)]",
+                    "flex-center w-10 h-10 rounded-full border-[1.5px] border-[var(--color-brand-accent)]",
                     "text-[var(--color-brand-light)] hover:bg-[var(--color-brand-accent)] hover:text-[var(--color-text-on-accent-primary)]",
                     "transition-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-brand-primary)]"
                   )}
@@ -124,7 +135,7 @@ export function Footer({ omitInvitationBand = false }: { omitInvitationBand?: bo
                     href={item.href}
                     className={clsx(
                       "font-body text-base text-[var(--color-text-on-strong-secondary)]",
-                      "hover:text-[var(--color-brand-accent)] hover:underline transition-fast"
+                      "no-underline hover:text-[var(--color-brand-accent)] hover:underline transition-fast"
                     )}
                   >
                     {item.label}
@@ -140,37 +151,28 @@ export function Footer({ omitInvitationBand = false }: { omitInvitationBand?: bo
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 flex-shrink-0 text-[var(--color-brand-accent)] mt-0.5" aria-hidden="true" />
                 <div>
-                  <p>Shop 3, Mopani Court</p>
-                  <p>Kabulonga</p>
-                  <p>Lusaka, Zambia</p>
+                  {addressLines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="w-5 h-5 flex-shrink-0 text-[var(--color-brand-accent)]" aria-hidden="true" />
-                <a href="tel:+260970000000" className="hover:text-[var(--color-brand-accent)] hover:underline transition-fast">
-                  +260 97 000 0000
+                <a href={`tel:${businessInfo.phone.tel}`} className="text-[var(--color-text-on-strong-secondary)] no-underline hover:text-[var(--color-brand-accent)] hover:underline transition-fast">
+                  {businessInfo.phone.display}
                 </a>
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5 flex-shrink-0 text-[var(--color-brand-accent)]" aria-hidden="true" />
-                <a href="mailto:hello@groomd.example" className="hover:text-[var(--color-brand-accent)] hover:underline transition-fast">
-                  hello@groomd.example
+                <a href={`mailto:${businessInfo.email}`} className="text-[var(--color-text-on-strong-secondary)] no-underline hover:text-[var(--color-brand-accent)] hover:underline transition-fast">
+                  {businessInfo.email}
                 </a>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onSurface="strong"
-                asChild
-                className="mt-2"
-              >
-                <Link href="/contact">Get directions</Link>
-              </Button>
             </address>
           </div>
 
           <div className="lg:col-span-1" aria-labelledby="hours-heading">
-            <h3 id="hours-heading" className="eyebrow text-[var(--color-brand-accent)] mb-4">Opening hours</h3>
+            <h3 id="hours-heading" className="eyebrow text-[var(--color-brand-accent)] mb-4">Hours</h3>
             <table className="w-full font-body text-sm text-[var(--color-text-on-strong-secondary)]" role="table">
               <tbody>
                 <tr>
@@ -203,7 +205,7 @@ export function Footer({ omitInvitationBand = false }: { omitInvitationBand?: bo
                   href={link.href}
                   className={clsx(
                     "font-body text-sm text-[var(--color-text-on-strong-secondary)]",
-                    "hover:text-[var(--color-brand-accent)] hover:underline transition-fast"
+                    "no-underline hover:text-[var(--color-brand-accent)] hover:underline transition-fast"
                   )}
                 >
                   {link.label}

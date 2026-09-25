@@ -1,6 +1,4 @@
 import { Metadata } from "next";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import {
   Hero,
   QuickInfo,
@@ -10,7 +8,6 @@ import {
   BarbersPreview,
   VisitStudio,
 } from "@/components/home";
-import { HoneyInvitationBand } from "@/components/layout/HoneyInvitationBand";
 import { FirstVisitModal } from "@/components/ui/FirstVisitModal";
 
 export const metadata: Metadata = {
@@ -29,9 +26,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-background)]">
-      <Header />
-      <main id="main-content" className="flex-1">
+    <>
         <Hero />
         <QuickInfo />
         <Values />
@@ -39,10 +34,7 @@ export default function Home() {
         <CraftBand />
         <BarbersPreview />
         <VisitStudio />
-        <HoneyInvitationBand />
-      </main>
-      <Footer />
       <FirstVisitModal />
-    </div>
+    </>
   );
 }

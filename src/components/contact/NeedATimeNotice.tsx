@@ -11,14 +11,9 @@ export function NeedATimeNotice() {
             <Calendar className="w-6 h-6" aria-hidden="true" />
           </div>
 
-          <h3 className="font-display font-bold text-xl uppercase tracking-tight text-[var(--color-brand-primary)] mb-2">
-            NEED A TIME?
-          </h3>
 
           <p className="font-body text-sm text-[var(--color-text-secondary)] leading-relaxed max-w-md mx-auto mb-6">
-            The quickest way to find an available chair is to book online.
-            <br />
-            We don&apos;t take bookings by email.
+            The quickest way to get a time is to book online. We can&apos;t take bookings by email.
           </p>
 
           <Button
