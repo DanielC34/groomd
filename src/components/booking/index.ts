@@ -3,3 +3,7 @@ export * from "./BookingStepper";
 export * from "./ServiceSelection";
 export * from "./BookingSummary";
 export * from "./QuickCutNotice";
+export * from "./BarberTimeSelection";
+export * from "./CustomerDetailsForm";
+export * from "./ReviewConfirm";
+export * from "./BookingConfirmed";

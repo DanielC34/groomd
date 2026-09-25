@@ -1,52 +1,62 @@
 "use client";
 
-import { Shield, Tag, Users } from "lucide-react";
+import { Clock, DollarSign, Users } from "lucide-react";
 
 const values = [
   {
-    icon: Shield,
-    title: "Time set aside for you",
-    description: "Every appointment is booked for the full length of your service, so nobody rushes your cut.",
+    icon: Clock,
+    title: "TIME SET ASIDE FOR YOU",
+    description:
+      "Your appointment is your time in the chair. Barbers stay focused on one cut at a time, with no rushing you through.",
   },
   {
-    icon: Tag,
-    title: "Prices you can see",
-    description: "Every service is listed with its price and time before you book. No surprises at the chair.",
+    icon: DollarSign,
+    title: "PRICES YOU CAN SEE",
+    description:
+      "Clear, honest prices before you book. Pay in-store after your service via card, cash, or mobile payment. No surprises.",
   },
   {
     icon: Users,
-    title: "Your barber, your call",
-    description: "Pick the barber you trust, or choose no preference and we'll seat you with whoever is free.",
+    title: "YOUR BARBER, YOUR CALL",
+    description:
+      "Choose your preferred specialist, or pick \"No preference\" and we'll assign the first skilled chair available for your slot.",
   },
 ] as const;
 
 export function Values() {
   return (
-    <section className="bg-[var(--color-background)] py-16 lg:py-24" aria-labelledby="values-heading">
+    <section className="bg-[var(--color-background)] py-16 lg:py-20" aria-labelledby="values-heading">
       <div className="container">
-        <header className="max-w-2xl mx-auto text-center mb-12 lg:mb-16">
-          <p className="eyebrow text-[var(--color-brand-primary)] mb-4" aria-hidden="true">
-            ● WHY GROOMD
-          </p>
-          <h2 id="values-heading" className="font-display font-bold text-2xl lg:text-3xl text-[var(--color-text-primary)] mb-4">
-            A barbershop that respects your time.
+        <header className="mb-12">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-brand-primary)] inline-block" aria-hidden="true" />
+            <p className="eyebrow text-[var(--color-brand-primary)] tracking-[0.16em]">
+              THE GROOMD STANDARD
+            </p>
+          </div>
+          <h2
+            id="values-heading"
+            className="font-display font-extrabold uppercase tracking-tight text-3xl md:text-4xl text-[var(--color-brand-primary)] max-w-3xl"
+          >
+            A BARBERSHOP THAT RESPECTS YOUR TIME.
           </h2>
         </header>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {values.map((value) => (
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {values.map((val) => (
             <article
-              key={value.title}
-              className="flex flex-col items-center md:items-start text-center md:text-left gap-3 p-4 lg:p-6 bg-[var(--color-surface)] rounded-[var(--radius-lg)] border border-[var(--color-border)]"
+              key={val.title}
+              className="flex flex-col items-start gap-4 p-6 bg-[var(--color-surface)] rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-xs"
             >
-              <div className="flex-center w-12 h-12 rounded-[var(--radius-lg)] bg-[var(--color-brand-accent)] text-[var(--color-text-on-accent-primary)] flex-shrink-0">
-                <value.icon className="w-6 h-6" aria-hidden="true" />
+              <div className="w-10 h-10 rounded-full border border-[var(--color-brand-primary)] flex items-center justify-center text-[var(--color-brand-primary)] shrink-0">
+                <val.icon className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="font-display font-bold text-base lg:text-lg text-[var(--color-text-primary)]">
-                  {value.title}
+                <h3 className="font-display font-bold text-base text-[var(--color-brand-primary)] uppercase tracking-wide mb-2">
+                  {val.title}
                 </h3>
-                <p className="font-body text-sm lg:text-base text-[var(--color-text-secondary)] leading-relaxed">
-                  {value.description}
+                <p className="font-body text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                  {val.description}
                 </p>
               </div>
             </article>

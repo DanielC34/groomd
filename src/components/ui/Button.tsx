@@ -4,7 +4,7 @@ import { forwardRef, ButtonHTMLAttributes } from "react";
 import { clsx } from "clsx";
 import { Slot } from "@radix-ui/react-slot";
 
-export type ButtonVariant = "book" | "solid-wine" | "outline" | "text";
+export type ButtonVariant = "book" | "solid-wine" | "outline" | "outline-wine" | "text";
 export type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -122,6 +122,29 @@ const variantStyles = {
       disabled:text-[var(--color-text-muted)]
     `,
   },
+  "outline-wine": {
+    light: `
+      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
+      active:bg-[var(--color-brand-primary)] active:scale-[0.98]
+      focus-visible:ring-[var(--color-focus-on-light)] focus-visible:ring-offset-[var(--color-brand-accent)]
+      disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
+    `,
+    strong: `
+      bg-transparent border-1.5 border-[var(--color-brand-accent)] text-[var(--color-brand-accent)]
+      hover:bg-[var(--color-brand-accent)] hover:text-[var(--color-text-on-accent-primary)]
+      active:bg-[var(--color-brand-accent)] active:scale-[0.98]
+      focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
+      disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
+    `,
+    accent: `
+      bg-transparent border-1.5 border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]
+      hover:bg-[var(--color-brand-primary)] hover:text-[var(--color-brand-accent)]
+      active:bg-[var(--color-brand-primary)] active:scale-[0.98]
+      focus-visible:ring-[var(--color-focus-on-strong)] focus-visible:ring-offset-[var(--color-brand-primary)]
+      disabled:text-[var(--color-text-muted)] disabled:border-[var(--color-border-strong)]
+    `,
+  },
 };
 
 const sizeStyles = {
@@ -156,19 +179,32 @@ const Comp = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const isDisabled = disabled || loading;
     const surfaceKey = onSurface as keyof typeof variantStyles.book;
-    const Component = asChild ? Slot : "button";
+    const combinedClassName = clsx(
+      baseStyles,
+      variantStyles[variant]?.[surfaceKey] || variantStyles[variant].light,
+      sizeStyles[size],
+      fullWidth && "w-full",
+      icon && "gap-2",
+      className
+    );
+
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref as React.Ref<HTMLElement | null>}
+          className={combinedClassName}
+          aria-busy={loading}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
 
     return (
-      <Component
-        ref={ref as React.Ref<HTMLButtonElement | null>}
-        className={clsx(
-          baseStyles,
-          variantStyles[variant]?.[surfaceKey] || variantStyles[variant].light,
-          sizeStyles[size],
-          fullWidth && "w-full",
-          icon && "gap-2",
-          className
-        )}
+      <button
+        ref={ref}
+        className={combinedClassName}
         disabled={isDisabled}
         aria-busy={loading}
         {...props}
@@ -205,7 +241,7 @@ const Comp = forwardRef<HTMLButtonElement, ButtonProps>(
             {icon && iconPosition === "end" && <span aria-hidden="true">{icon}</span>}
           </>
         )}
-      </Component>
+      </button>
     );
   }
 );

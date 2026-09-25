@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 interface HoneyInvitationBandProps {
+  eyebrow?: string;
   headline?: string;
   body?: string;
   ctaText?: string;
@@ -11,34 +12,36 @@ interface HoneyInvitationBandProps {
 }
 
 export function HoneyInvitationBand({
-  headline = "Ready for a fresh cut?",
-  body = "Choose your service, barber and a time that suits you.",
-  ctaText = "Book Now",
+  eyebrow = "YOUR CHAIR IS WAITING",
+  headline = "READY FOR A FRESH CUT?",
+  body = "Choose your service, barber and a time that suits you. Book online in about a minute.",
+  ctaText = "BOOK AN APPOINTMENT",
   ctaHref = "/book",
 }: HoneyInvitationBandProps = {}) {
   return (
     <section
-      className="bg-[var(--color-brand-accent)] text-[var(--color-text-on-accent-primary)]"
+      className="bg-[var(--color-brand-accent)] text-[var(--color-brand-primary)] py-12 lg:py-16"
       aria-labelledby="invitation-heading"
     >
       <div className="container">
-        <div className={clsx(
-          "py-12 lg:py-16",
-          "flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 text-center lg:text-left"
-        )}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 text-left">
           <div>
-            <h2 id="invitation-heading" className="font-display font-bold text-2xl lg:text-3xl mb-3">
+            {eyebrow && (
+              <span className="block font-body text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand-primary)] mb-1">
+                {eyebrow}
+              </span>
+            )}
+            <h2 id="invitation-heading" className="font-display font-extrabold uppercase tracking-tight text-2xl md:text-3xl text-[var(--color-brand-primary)] mb-2">
               {headline}
             </h2>
-            <p className="font-body text-base lg:text-lg max-w-md mx-auto lg:mx-0">
+            <p className="font-body text-sm lg:text-base text-[var(--color-brand-primary)] max-w-xl">
               {body}
             </p>
           </div>
           <Button
             variant="solid-wine"
             size="lg"
-            fullWidth={false}
-            className="w-full lg:w-auto mt-6 lg:mt-0"
+            className="w-full lg:w-auto mt-4 lg:mt-0 uppercase tracking-wider font-bold shrink-0"
             onSurface="accent"
             asChild
           >
@@ -48,8 +51,4 @@ export function HoneyInvitationBand({
       </div>
     </section>
   );
-}
-
-function clsx(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(" ");
 }
