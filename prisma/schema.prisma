@@ -1,0 +1,63 @@
+// Prisma Schema for Groomd - Men's Grooming Studio
+// Version: 7.10.0 compatible
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // URL is configured in prisma.config.ts
+}
+
+enum BookingStatus {
+  confirmed
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  price       Int      // in minor units (ngwee) - e.g., K220 = 22000
+  duration    Int      // in minutes
+  category    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model Barber {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  role        String
+  bio         String
+  specialities String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model Booking {
+  id             String       @id @default(cuid())
+  reference      String       @unique // GRD-XXXXXX format
+  serviceId      String
+  barberId       String
+  startAt        DateTime     // UTC timestamp
+  endAt          DateTime     // UTC timestamp
+  customerName   String
+  customerPhone  String
+  customerEmail  String
+  notes          String?
+  status         BookingStatus @default(confirmed)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id])
+  barber  Barber  @relation(fields: [barberId], references: [id])
+
+  @@index([startAt])
+  @@index([barberId, startAt])
+  @@index([status])
+}
