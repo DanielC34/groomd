@@ -43,14 +43,26 @@ export async function GET(request: NextRequest) {
     const startOfDay = lusakaDateTimeToUtc(query.date);
     const endOfDay = addDays(startOfDay, 1);
 
-    const existingBookings = await getPrisma().booking.findMany({
-      where: {
-        status: 'confirmed',
-        startAt: { lt: endOfDay },
-        endAt: { gt: startOfDay },
-      },
-      select: { startAt: true, endAt: true, barberId: true },
-    });
+    // Fetch existing bookings from database, or use empty array if DB is unavailable.
+    let existingBookings: Array<{ startAt: Date; endAt: Date; barberId: string }> = [];
+    try {
+      existingBookings = await getPrisma().booking.findMany({
+        where: {
+          status: 'confirmed',
+          startAt: { lt: endOfDay },
+          endAt: { gt: startOfDay },
+        },
+        select: { startAt: true, endAt: true, barberId: true },
+      });
+    } catch (prismaError) {
+      // If database is not configured (e.g., missing DATABASE_URL), fall back to empty bookings.
+      // This allows local development without a database.
+      if (prismaError instanceof Error && prismaError.message.includes('DATABASE_URL is not set')) {
+        existingBookings = [];
+      } else {
+        throw prismaError;
+      }
+    }
 
     const availability = getAvailabilityForDate(
       query.serviceId,
