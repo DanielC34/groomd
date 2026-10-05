@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma/client';
 import { getAvailabilityForDate } from '@/lib/booking/availability';
 import { validateAvailabilityQuery, AvailabilityQuery } from '@/lib/booking/validation';
-import { getNowInLusaka, lusakaDateTimeToUtc, todayLusakaYmd, addDaysYmd, addDays, dayOfWeekYmd } from '@/lib/booking/timezone';
+import { getNowInLusaka, lusakaDateTimeToUtc, todayLusakaYmd, addDaysYmd, addDays } from '@/lib/booking/timezone';
 import { bookingConfig } from '@/lib/data/booking-config';
+import { BookingStatus } from '@prisma/client';
 
 function parseQueryParams(searchParams: URLSearchParams): AvailabilityQuery {
   const barberId = searchParams.get('barberId');
@@ -32,13 +33,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (dayOfWeekYmd(query.date) === 'Sunday') {
-      return NextResponse.json(
-        { date: query.date, dayOfWeek: 'Sunday', status: 'closed', slots: [] },
-        { status: 200 }
-      );
-    }
-
     // Lusaka day bounds as absolute instants.
     const startOfDay = lusakaDateTimeToUtc(query.date);
     const endOfDay = addDays(startOfDay, 1);
@@ -48,7 +42,7 @@ export async function GET(request: NextRequest) {
     try {
       existingBookings = await getPrisma().booking.findMany({
         where: {
-          status: 'confirmed',
+          status: BookingStatus.CONFIRMED,
           startAt: { lt: endOfDay },
           endAt: { gt: startOfDay },
         },
@@ -64,7 +58,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const availability = getAvailabilityForDate(
+    const availability = await getAvailabilityForDate(
       query.serviceId,
       query.barberPreference,
       query.barberId,

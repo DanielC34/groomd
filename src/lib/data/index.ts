@@ -13,3 +13,4 @@ export {
 } from './services';
 export { barbers, getBarberById, getAllBarbers, getBarbersByRole } from './barbers';
 export { firstVisitOffer } from './first-visit-offer';
+export { canonicalizePhone, isValidZambianPhone, formatPhoneForDisplay } from '@/lib/utils/phone';

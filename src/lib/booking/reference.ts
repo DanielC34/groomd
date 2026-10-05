@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import { PrismaClient, BookingStatus } from '@prisma/client';
 
 const REFERENCE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const REFERENCE_PREFIX = 'GRD-';
@@ -52,7 +52,7 @@ export interface BookingCreationResult {
   customerPhone: string;
   customerEmail: string;
   notes: string | null;
-  status: 'confirmed';
+  status: BookingStatus;
 }
 
 export async function createBooking(
@@ -118,7 +118,7 @@ export async function createBooking(
       customerPhone: input.customerPhone,
       customerEmail: input.customerEmail,
       notes: input.notes ?? null,
-      status: 'confirmed',
+      status: BookingStatus.CONFIRMED,
     },
   });
 

@@ -18,5 +18,6 @@ export default defineConfig({
     // Read directly (not via env()) so `prisma generate` still works when
     // DATABASE_URL is absent, e.g. during `npm install` on CI.
     url: process.env.DATABASE_URL,
+    shadowDatabaseUrl: process.env.DATABASE_URL,
   },
 });

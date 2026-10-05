@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma/client';
 import { getAllBarbers } from '@/lib/data/barbers';
 import type { Prisma } from '@prisma/client';
+import { BookingStatus } from '@prisma/client';
 import { validateBookingRequest, validateBookingTimeRules, BookingRequest } from '@/lib/booking/validation';
 import { getServiceByIdChecked, getBarberByIdChecked } from '@/lib/booking/validation';
 import { isBookingOverlapViolation } from '@/lib/booking/overlap-violation';
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       return getPrisma().$transaction(async (tx) => {
       const existingBookings = await tx.booking.findMany({
         where: {
-          status: 'confirmed',
+          status: BookingStatus.CONFIRMED,
           startAt: { lt: endAtUtc },
           endAt: { gt: startAtUtc },
         },
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
           customerPhone,
           customerEmail,
           notes: notes ?? null,
-          status: 'confirmed',
+          status: BookingStatus.CONFIRMED,
         },
       });
 

@@ -22,8 +22,8 @@ describe('Server-timezone independence', () => {
     expect(endAt.toISOString()).toBe('2026-10-12T08:45:00.000Z');
   });
 
-  it('a stored booking blocks exactly the overlapping Lusaka slots', () => {
-    const r = getAvailabilityForDate('signature-cut', 'specific', 'mwila-banda', day, stored, reference);
+  it('a stored booking blocks exactly the overlapping Lusaka slots', async () => {
+    const r = await getAvailabilityForDate('signature-cut', 'specific', 'mwila-banda', day, stored, reference);
     const starts = r.slots.map((s) => s.start);
     for (const blocked of ['09:30', '09:45', '10:00', '10:15', '10:30']) {
       expect(starts).not.toContain(blocked);
@@ -33,8 +33,8 @@ describe('Server-timezone independence', () => {
     }
   });
 
-  it('returns the correct Lusaka date and slot end times', () => {
-    const r = getAvailabilityForDate('signature-cut', 'specific', 'mwila-banda', day, [], reference);
+  it('returns the correct Lusaka date and slot end times', async () => {
+    const r = await getAvailabilityForDate('signature-cut', 'specific', 'mwila-banda', day, [], reference);
     expect(r.date).toBe('2026-10-12');
     expect(r.dayOfWeek).toBe('Monday');
     expect(r.slots[0]).toEqual({ start: '09:00', end: '09:45', barberId: 'mwila-banda' });
@@ -45,10 +45,10 @@ describe('Server-timezone independence', () => {
     expect(formatLusakaTime(addMinutes(lusakaDateTimeToUtc('2026-10-12', '16:45'), 75))).toBe('18:00');
   });
 
-  it('applies one-hour notice in Lusaka time', () => {
+  it('applies one-hour notice in Lusaka time', async () => {
     // "Now" = 07:50 UTC = 09:50 Lusaka on the same day -> earliest start is 11:00
     const now = new Date('2026-10-12T07:50:00Z');
-    const r = getAvailabilityForDate('signature-cut', 'no-preference', null, day, [], now);
+    const r = await getAvailabilityForDate('signature-cut', 'no-preference', null, day, [], now);
     expect(r.slots[0].start).toBe('11:00');
   });
 

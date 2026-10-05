@@ -11,56 +11,199 @@ datasource db {
 }
 
 enum BookingStatus {
-  confirmed
+  CONFIRMED @map("confirmed")
+  CANCELLED @map("cancelled")
+  COMPLETED @map("completed")
+  NO_SHOW   @map("no_show")
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BarberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model Service {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String        @id @default(cuid())
+  name        String        @unique
   description String
-  price       Int      // in minor units (ngwee) - e.g., K220 = 22000
-  duration    Int      // in minutes
+  price       Int           // in minor units (ngwee) - e.g., K220 = 22000
+  duration    Int           // in minutes
   category    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      ServiceStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   bookings Booking[]
+
+  @@index([status])
 }
 
 model Barber {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String        @id @default(cuid())
+  name        String        @unique
   role        String
   bio         String
   specialities String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      BarberStatus  @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  bookings Booking[]
+  bookings   Booking[]
+  blockouts  Blockout[]
+  staffUser  StaffUser?
+
+  @@index([status])
 }
 
-// Double-booking protection: the "Booking_barber_no_overlap" exclusion constraint
-// (btree_gist, [startAt, endAt) per barber, confirmed only) is defined in
-// migrations/20260926000000_booking_no_overlap. Prisma cannot express it in this file.
-model Booking {
-  id             String       @id @default(cuid())
-  reference      String       @unique // GRD-XXXXXX format
-  serviceId      String
-  barberId       String
-  startAt        DateTime     // UTC timestamp
-  endAt          DateTime     // UTC timestamp
-  customerName   String
-  customerPhone  String
-  customerEmail  String
-  notes          String?
-  status         BookingStatus @default(confirmed)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+model StaffUser {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  passwordHash  String
+  status        StaffStatus @default(ACTIVE)
+  barberId      String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deactivatedAt DateTime?
 
-  service Service @relation(fields: [serviceId], references: [id])
-  barber  Barber  @relation(fields: [barberId], references: [id])
+  barber    Barber?   @relation(fields: [barberId], references: [id], onDelete: Restrict)
+  sessions  Session[]
+
+  @@index([status])
+  @@index([email])
+}
+
+model StaffInvitation {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id        String      @id @default(cuid())
+  email     String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([email])
+  @@index([tokenHash])
+}
+
+model Session {
+  id           String      @id @default(cuid())
+  staffUserId  String
+  tokenHash    String
+  expiresAt    DateTime
+  createdAt    DateTime    @default(now())
+
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenHash])
+  @@index([staffUserId])
+  @@index([expiresAt])
+}
+
+model Customer {
+  id             String    @id @default(cuid())
+  name           String
+  canonicalPhone String    @unique
+  email          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  bookings       Booking[]
+
+  @@index([email])
+}
+
+model Booking {
+  id                      String       @id @default(cuid())
+  reference               String       @unique // GRD-XXXXXX format
+  serviceId               String
+  barberId                String
+  customerId              String?
+  customerName            String
+  customerPhone           String
+  customerEmail           String
+  notes                   String?
+  status                  BookingStatus @default(CONFIRMED)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  startAt                 DateTime
+  endAt                   DateTime
+  cancelledAt             DateTime?
+  cancellationReason      String?
+  cancellationNote        String?
+  outcomeAt               DateTime?
+  rescheduledFromBookingId String?
+
+  service                    Service   @relation(fields: [serviceId], references: [id])
+  barber                     Barber    @relation(fields: [barberId], references: [id])
+  customer                   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  rescheduledFromBooking     Booking?  @relation("RescheduleChain", fields: [rescheduledFromBookingId], references: [id], onDelete: Restrict)
+  rescheduledToBookings      Booking[] @relation("RescheduleChain")
 
   @@index([startAt])
   @@index([barberId, startAt])
   @@index([status])
+  @@index([customerId])
+  @@index([rescheduledFromBookingId])
+}
+
+model BusinessHours {
+  id           String   @id @default(cuid())
+  dayOfWeek    Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
+  openMinute   Int?
+  closeMinute  Int?
+  isClosed     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([dayOfWeek])
+  @@index([dayOfWeek])
+}
+
+model SpecialHours {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date  // Lusaka calendar date
+  openMinute   Int?
+  closeMinute  Int?
+  isClosed     Boolean  @default(false)
+  reason       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([date])
+  @@index([date])
+}
+
+model Blockout {
+  id        String   @id @default(cuid())
+  barberId  String?
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  barber Barber? @relation(fields: [barberId], references: [id], onDelete: Restrict)
+
+  @@index([barberId, startAt])
+  @@index([startAt])
 }

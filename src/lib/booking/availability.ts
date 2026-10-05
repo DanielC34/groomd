@@ -1,21 +1,15 @@
 import {
-  isDayClosed,
-  getOpeningHours,
-  type DayOfWeek,
-} from '@/lib/data/opening-hours';
-import { bookingConfig } from '@/lib/data/booking-config';
-import { getServiceById } from '@/lib/data/services';
-import { getAllBarbers } from '@/lib/data/barbers';
-import {
   getNowInLusaka,
   getLusakaParts,
-  lusakaDateTimeToUtc,
-  formatLusakaTime,
-  isSameLusakaDay,
   startOfLusakaDay,
-  addMinutes,
   addDays,
 } from './timezone';
+import { getServiceById } from '@/lib/data/services';
+import {
+  getEffectiveBusinessHours,
+  getAvailableSlotsForBarber,
+  getAvailableSlotsForNoPreference,
+} from './business-hours';
 
 export type BarberPreference = 'specific' | 'no-preference';
 
@@ -37,89 +31,24 @@ export interface BarberAvailability {
   slots: TimeSlot[];
 }
 
-function parseTime(time: string): { hours: number; minutes: number } {
-  const [hours, minutes] = time.split(':').map(Number);
-  return { hours, minutes };
-}
-
-function timeToMinutes(time: string): number {
-  const { hours, minutes } = parseTime(time);
-  return hours * 60 + minutes;
-}
-
-function minutesToTime(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-}
-
-function generateCandidateSlots(
-  openTime: string,
-  closeTime: string,
-  serviceDuration: number,
-  intervalMinutes: number
-): string[] {
-  const open = timeToMinutes(openTime);
-  const close = timeToMinutes(closeTime);
-  const latestStart = close - serviceDuration;
-
-  const slots: string[] = [];
-  for (let time = open; time <= latestStart; time += intervalMinutes) {
-    slots.push(minutesToTime(time));
-  }
-  return slots;
-}
-
-function isSlotInPast(
-  slotStart: string,
-  referenceTime: Date,
-  minNoticeMinutes: number
-): boolean {
-  const nowMinutes = getLusakaParts(referenceTime).minutesOfDay;
-  const slotMinutes = timeToMinutes(slotStart);
-  return slotMinutes < nowMinutes + minNoticeMinutes;
-}
-
-function doesOverlap(
-  existingStart: Date,
-  existingEnd: Date,
-  requestedStart: Date,
-  requestedEnd: Date
-): boolean {
-  return existingStart < requestedEnd && existingEnd > requestedStart;
-}
-
-function getBookedIntervalsForBarber(
-  bookings: Array<{ startAt: Date; endAt: Date; barberId: string }>,
-  barberId: string,
-  date: Date
-): Array<{ start: Date; end: Date }> {
-  const startOfDay = startOfLusakaDay(date);
-  const endOfDay = addMinutes(startOfDay, 24 * 60);
-
-  return bookings
-    .filter((b) => b.barberId === barberId)
-    .filter((b) => doesOverlap(b.startAt, b.endAt, startOfDay, endOfDay))
-    .map((b) => ({ start: b.startAt, end: b.endAt }));
-}
-
-export function getAvailabilityForDate(
+export async function getAvailabilityForDate(
   serviceId: string,
   barberPreference: BarberPreference,
   barberId: string | null | undefined,
   date: Date,
   existingBookings: Array<{ startAt: Date; endAt: Date; barberId: string }> = [],
   referenceTime: Date = getNowInLusaka()
-): AvailabilityResult {
+): Promise<AvailabilityResult> {
   const service = getServiceById(serviceId);
   if (!service) {
     throw new Error(`Service not found: ${serviceId}`);
   }
 
   const { ymd: dateStr, dayOfWeek: lusakaDay } = getLusakaParts(date);
-  const dayOfWeek = lusakaDay as DayOfWeek;
+  const dayOfWeek = lusakaDay;
 
-  if (isDayClosed(dayOfWeek)) {
+  const businessHours = await getEffectiveBusinessHours(date);
+  if (businessHours.isClosed) {
     return {
       date: dateStr,
       dayOfWeek,
@@ -128,75 +57,31 @@ export function getAvailabilityForDate(
     };
   }
 
-  const hours = getOpeningHours(dayOfWeek);
-  if (!hours) {
-    return {
-      date: dateStr,
-      dayOfWeek,
-      status: 'closed',
-      slots: [],
-    };
-  }
-
-  const isToday = isSameLusakaDay(date, referenceTime);
-  const candidateSlots = generateCandidateSlots(
-    hours.open,
-    hours.close,
-    service.durationMinutes,
-    bookingConfig.slotIntervalMinutes
-  );
-
-  const availableSlots: TimeSlot[] = [];
+  let availableSlots: TimeSlot[];
 
   if (barberPreference === 'specific' && barberId) {
-    const bookedIntervals = getBookedIntervalsForBarber(existingBookings, barberId, date);
-
-    for (const slotStart of candidateSlots) {
-      if (isToday && isSlotInPast(slotStart, referenceTime, bookingConfig.minNoticeMinutes)) {
-        continue;
-      }
-
-      const slotStartDate = lusakaDateTimeToUtc(dateStr, slotStart);
-      const slotEndDate = addMinutes(slotStartDate, service.durationMinutes);
-
-      const hasConflict = bookedIntervals.some((interval) =>
-        doesOverlap(interval.start, interval.end, slotStartDate, slotEndDate)
-      );
-
-      if (!hasConflict) {
-        availableSlots.push({
-          start: slotStart,
-          end: formatLusakaTime(slotEndDate),
-          barberId,
-        });
-      }
-    }
+    const slots = await getAvailableSlotsForBarber(
+      serviceId,
+      barberId,
+      date,
+      existingBookings,
+      referenceTime
+    );
+    availableSlots = slots.map((s) => ({
+      start: s.start,
+      end: s.end,
+      barberId,
+    }));
   } else if (barberPreference === 'no-preference') {
-    const allBarbers = getAllBarbers().map((b) => b.id);
-
-    for (const slotStart of candidateSlots) {
-      if (isToday && isSlotInPast(slotStart, referenceTime, bookingConfig.minNoticeMinutes)) {
-        continue;
-      }
-
-      const slotStartDate = lusakaDateTimeToUtc(dateStr, slotStart);
-      const slotEndDate = addMinutes(slotStartDate, service.durationMinutes);
-
-      const availableBarber = allBarbers.find((bid) => {
-        const bookedIntervals = getBookedIntervalsForBarber(existingBookings, bid, date);
-        return !bookedIntervals.some((interval) =>
-          doesOverlap(interval.start, interval.end, slotStartDate, slotEndDate)
-        );
-      });
-
-      if (availableBarber) {
-        availableSlots.push({
-          start: slotStart,
-          end: formatLusakaTime(slotEndDate),
-          barberId: availableBarber,
-        });
-      }
-    }
+    const slots = await getAvailableSlotsForNoPreference(
+      serviceId,
+      date,
+      existingBookings,
+      referenceTime
+    );
+    availableSlots = slots;
+  } else {
+    availableSlots = [];
   }
 
   const status = availableSlots.length > 0 ? 'open' : 'full';
@@ -209,7 +94,7 @@ export function getAvailabilityForDate(
   };
 }
 
-export function getAvailabilityForRange(
+export async function getAvailabilityForRange(
   serviceId: string,
   barberPreference: BarberPreference,
   barberId: string | null,
@@ -217,14 +102,14 @@ export function getAvailabilityForRange(
   endDate: Date,
   existingBookings: Array<{ startAt: Date; endAt: Date; barberId: string }> = [],
   referenceTime: Date = getNowInLusaka()
-): AvailabilityResult[] {
+): Promise<AvailabilityResult[]> {
   const results: AvailabilityResult[] = [];
   let current = startOfLusakaDay(startDate);
   const end = startOfLusakaDay(endDate);
 
   while (current <= end) {
     results.push(
-      getAvailabilityForDate(
+      await getAvailabilityForDate(
         serviceId,
         barberPreference,
         barberId,
