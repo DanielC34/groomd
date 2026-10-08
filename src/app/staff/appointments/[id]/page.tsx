@@ -1,8 +1,10 @@
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import StaffLayout from "@/app/staff/layout";
 import { getPrisma } from "@/lib/prisma/client";
 import { getLusakaParts, formatLusakaTime } from "@/lib/booking/timezone";
 import { BookingStatus } from "@prisma/client";
+import { canCompleteAt, canMarkNoShowAt } from "@/lib/booking/lifecycle";
 
 const statusLabels: Record<BookingStatus, string> = {
   CONFIRMED: "Confirmed",
@@ -47,12 +49,12 @@ interface AppointmentDetails {
     role: string;
     specialities: string[];
   };
+  outcomeAt: Date | null;
 }
 
 export default async function StaffAppointmentDetailsPage(
   { params }: { params: { id: string } }
 ) {
-  const prisma = getPrisma();
   const appointmentId = params.id;
 
   const booking = await getPrisma().booking.findUnique({
@@ -104,6 +106,67 @@ export default async function StaffAppointmentDetailsPage(
 
   const statusLabel = statusLabels[booking.status as BookingStatus];
   const statusClass = statusBadgeClass[booking.status as BookingStatus];
+
+  // Determine if outcome actions are valid
+  const isOutcomeValid = booking.status === BookingStatus.CONFIRMED;
+  const canComplete = isOutcomeValid && canCompleteAt(booking, new Date());
+  const canMarkNoShow = isOutcomeValid && canMarkNoShowAt(booking, new Date());
+  const isCompleted = booking.status === BookingStatus.COMPLETED;
+  const isNoShow = booking.status === BookingStatus.NO_SHOW;
+  const hasOutcome = booking.outcomeAt !== null;
+
+  // Helper to format outcome date
+  const formatOutcomeDate = (date: Date | null): string => {
+    if (!date) return 'Not set';
+    return date.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  };
+
+  // Outcome action handlers
+  const handleComplete = () => {
+    window.fetch(`/api/bookings/${booking.id}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to complete appointment');
+        }
+        window.location.reload();
+      })
+      .catch((error) => {
+        alert('Error: ' + error.message);
+      });
+  };
+
+  const handleNoShow = () => {
+    window.fetch(`/api/bookings/${booking.id}/no-show`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to mark as no-show');
+        }
+        window.location.reload();
+      })
+      .catch((error) => {
+        alert('Error: ' + error.message);
+      });
+  };
 
   return (
     <StaffLayout>
@@ -180,15 +243,86 @@ export default async function StaffAppointmentDetailsPage(
           </div>
         </div>
 
-        {booking.service.description && (
+        {hasOutcome && (
           <div className="mt-6 p-4 rounded-[var(--radius-lg)] bg-[var(--color-background-support)] border border-[var(--color-border)]">
-            <p className="text-sm font-body text-[var(--color-text-secondary)]">Description</p>
-            <p className="font-body text-lg">{booking.service.description}</p>
+            <p className="text-sm font-body text-[var(--color-text-secondary)]">Outcome</p>
+            <p className="font-body text-lg">
+              {formatOutcomeDate(booking.outcomeAt!)}
+            </p>
+          </div>
+        )}
+
+        {isCompleted || isNoShow ? (
+          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+            <p className="text-sm text-[var(--color-text-secondary)]">Outcome recorded</p>
+            <p className="font-body">
+              {isCompleted ? 'Appointment marked as completed' : 'Appointment marked as no-show'} on {formatOutcomeDate(booking.outcomeAt!)}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6">
+            <p className="text-sm font-body text-[var(--color-text-secondary)]">Outcome</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Complete button */}
+              {canComplete ? (
+                <div>
+                  <button
+                    onClick={handleComplete}
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--color-brand-primary)] border border-[var(--color-border-strong)] rounded-[var(--radius-md)] hover:bg-[var(--color-surface-muted)] transition-fast"
+                    aria-label="Mark appointment as completed"
+                  >
+                    Complete
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <span className="px-3 py-1.5 text-sm font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] rounded-[var(--radius-md)]">
+                    Complete
+                  </span>
+                </div>
+              )}
+
+              {/* No-show button */}
+              {canMarkNoShow ? (
+                <div>
+                  <button
+                    onClick={handleNoShow}
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--color-brand-primary)] border border-[var(--color-border-strong)] rounded-[var(--radius-md)] hover:bg-[var(--color-surface-muted)] transition-fast"
+                    aria-label="Mark appointment as no-show"
+                  >
+                    Mark as no-show
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <span className="px-3 py-1.5 text-sm font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] rounded-[var(--radius-md)]">
+                    Mark as no-show
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!(isCompleted || isNoShow) && !hasOutcome ? (
+          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+            <p className="text-sm font-body text-[var(--color-text-secondary)]">Outcome</p>
+            <p className="font-body">
+              Appointment outcome will be recorded after marking {canComplete ? 'completed ' : ''}{canMarkNoShow ? 'as no-show ' : ''}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+            <p className="text-sm font-body text-[var(--color-text-secondary)]">Outcome</p>
+            <p className="font-body">
+              {isCompleted ? 'Appointment marked as completed' : isNoShow ? 'Appointment marked as no-show' : 'Outcome in progress'}
+            </p>
           </div>
         )}
 
         <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
-          <p className="text-sm text-[var(--color-text-secondary)]">Created</p>
+          <p className="text-sm font-body text-[var(--color-text-secondary)]">Created</p>
           <p className="font-body">
             {new Date(booking.createdAt).toLocaleDateString("en-GB", {
               weekday: "short",
